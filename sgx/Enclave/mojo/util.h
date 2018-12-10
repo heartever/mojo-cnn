@@ -28,16 +28,18 @@
 
 #pragma once
 
-
+/*
 #include <time.h>
 #include <string>
 #if (_MSC_VER  != 1600)
 #include <chrono>
 #else
 #include<time.h>
-#endif
+#endif*/
 #include "core_math.h"
-#include "network.h"
+
+
+//#include "network.h"
 
 
 #ifdef MOJO_CV2
@@ -63,6 +65,128 @@
 namespace mojo
 {
 
+static double PRECISION = 0.00000000000001;
+static int MAX_NUMBER_STRING_SIZE = 32;
+
+/**
+ * Double to ASCII
+ */
+char * local_dtoa(char *s, double n) {
+    // handle special cases
+    if (isnan(n)) {
+        strncpy(s, "nan", strlen("nan"));
+    } else if (isinf(n)) {
+        strncpy(s, "inf", strlen("inf"));
+    } else if (n == 0.0) {
+        strncpy(s, "0", strlen("0"));
+    } else {
+        int digit, m, m1;
+        char *c = s;
+        int neg = (n < 0);
+        if (neg)
+            n = -n;
+        // calculate magnitude
+        m = log10(n);
+        int useExp = (m >= 14 || (neg && m >= 9) || m <= -9);
+        if (neg)
+            *(c++) = '-';
+        // set up for scientific notation
+        if (useExp) {
+            if (m < 0)
+               m -= 1.0;
+            n = n / pow(10.0, m);
+            m1 = m;
+            m = 0;
+        }
+        if (m < 1.0) {
+            m = 0;
+        }
+        // convert the number
+        while (n > PRECISION || m >= 0) {
+            double weight = pow(10.0, m);
+            if (weight > 0 && !isinf(weight)) {
+                digit = floor(n / weight);
+                n -= (digit * weight);
+                *(c++) = '0' + digit;
+            }
+            if (m == 0 && n > 0)
+                *(c++) = '.';
+            m--;
+        }
+        if (useExp) {
+            // convert the exponent
+            int i, j;
+            *(c++) = 'e';
+            if (m1 > 0) {
+                *(c++) = '+';
+            } else {
+                *(c++) = '-';
+                m1 = -m1;
+            }
+            m = 0;
+            while (m1 > 0) {
+                *(c++) = '0' + m1 % 10;
+                m1 /= 10;
+                m++;
+            }
+            c -= m;
+            for (i = 0, j = m-1; i<j; i++, j--) {
+                // swap without temporary
+                c[i] ^= c[j];
+                c[j] ^= c[i];
+                c[i] ^= c[j];
+            }
+            c += m;
+        }
+        *(c) = '\0';
+    }
+    return s;
+}
+
+static char *local_itoa(char *buf, int i) 
+{
+    if (i < 0) {
+        *buf++ = '-';
+        return local_itoa(buf, -i);
+    } else {
+        if (i >= 10)
+            buf = local_itoa(buf, i/10);
+        *buf++ = (i%10) + '0';
+        *buf   = '\000';
+        return buf;
+    }
+}
+
+static char *itoa(long long a)
+{
+    char *buffer = new char[16];
+    return local_itoa(buffer, a);
+}
+
+static char *dtoa(long double a)
+{
+    char *buffer = new char[16];
+    return local_dtoa(buffer, a);
+}
+
+static int str2int(char *str)
+{
+    int len = strlen(str);
+    int result = 0;
+    for(int i = 0; i < len; i++)
+    {
+        result = result * 10 + ( str[i] - '0' );
+    }
+    
+    return result;
+}
+
+#define int2str(a) itoa((long long)a)
+#define float2str(a) dtoa((long double)a)
+
+void printf(const char *fmt, ...);
+
+/*
 // class to handle timing and drawing text progress output
 class progress
 {
@@ -545,7 +669,7 @@ mojo::matrix draw_cnn_weights(mojo::network &cnn, int layer_index, mojo::mojo_pa
 
 	}
 	*/
-	return cv2matrix(colorize(im, color_palette));
+/*	return cv2matrix(colorize(im, color_palette));
 }
 
 mojo::matrix draw_cnn_weights(mojo::network &cnn, std::string layer_name, mojo::mojo_palette color_palette = mojo::gray)
@@ -598,6 +722,6 @@ mojo::matrix draw_cnn_state(mojo::network &cnn, std::string layer_name, mojo::mo
 
 
 
-#endif // MOJO_CV#
+#endif // MOJO_CV#*/
 
 }// namespace

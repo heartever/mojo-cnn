@@ -31,12 +31,12 @@
 
 #include <math.h>
 #include <string.h>
-#include <string>
 #include <cstdlib>
 #include <random>
 #include <algorithm> 
 #include <immintrin.h>
 
+#include <vector>
 #include <sgx_trts.h> // sgx_read_rand
 
 namespace mojo

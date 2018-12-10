@@ -352,7 +352,7 @@ public:
 	const char *name;
 } activation_function;
 
-activation_function* new_activation_function(char *act)
+activation_function* new_activation_function(const char *act)
 {
 	activation_function *p = new activation_function;
 	/*if(act.compare(tan_h::name)==0) { p->f = &tan_h::f; p->fc = &tan_h::fc; p->df = &tan_h::df; p->name=tan_h::name;return p;}
@@ -365,16 +365,16 @@ activation_function* new_activation_function(char *act)
 	if(act.compare(none::name)==0) { p->f = &none::f; p->fc = &none::fc; p->df = &none::df; p->name=none::name; return p;}
 	if(act.compare(softmax::name) == 0) { p->f = &softmax::f; p->fc = &softmax::fc;p->df = &softmax::df; p->name = softmax::name; return p; }
 	if(act.compare(brokemax::name) == 0) { p->f = &brokemax::f; p->fc = &brokemax::fc;p->df = &brokemax::df; p->name = brokemax::name; return p; }*/
-	if(strncmp(act, tan_h::name, sizeof(act))==0) { p->f = &tan_h::f; p->fc = &tan_h::fc; p->df = &tan_h::df; p->name=tan_h::name;return p;}
-	if(strncmp(act, tan_h::name, sizeof(act))==0) { p->f = &identity::f; p->fc = &identity::fc; p->df = &identity::df; p->name=identity::name; return p;}
-	if(strncmp(act, tan_h::name, sizeof(act))==0) { p->f = &vlrelu::f; p->fc = &vlrelu::fc; p->df = &vlrelu::df; p->name=vlrelu::name; return p;}
-	if(strncmp(act, tan_h::name, sizeof(act))==0) { p->f = &lrelu::f; p->fc = &lrelu::fc; p->df = &lrelu::df; p->name=lrelu::name; return p;}
-	if(strncmp(act, tan_h::name, sizeof(act))==0) { p->f = &relu::f; p->fc = &relu::fc;p->df = &relu::df; p->name=relu::name;return p;}
-	if(strncmp(act, tan_h::name, sizeof(act))==0) { p->f = &sigmoid::f; p->fc = &sigmoid::fc;p->df = &sigmoid::df; p->name=sigmoid::name; return p;}
-	if(strncmp(act, tan_h::name, sizeof(act))==0) { p->f = &elu::f; p->fc = &elu::fc; p->df = &elu::df; p->name=elu::name; return p;}
-	if(strncmp(act, tan_h::name, sizeof(act))==0) { p->f = &none::f; p->fc = &none::fc; p->df = &none::df; p->name=none::name; return p;}
-	if(strncmp(act, tan_h::name, sizeof(act))==0) { p->f = &softmax::f; p->fc = &softmax::fc;p->df = &softmax::df; p->name = softmax::name; return p; }
-	if(strncmp(act, tan_h::name, sizeof(act))==0) { p->f = &brokemax::f; p->fc = &brokemax::fc;p->df = &brokemax::df; p->name = brokemax::name; return p; }
+	if(strncmp(act, tan_h::name, strlen(act))==0) { p->f = &tan_h::f; p->fc = &tan_h::fc; p->df = &tan_h::df; p->name=tan_h::name;return p;}
+	if(strncmp(act, identity::name, strlen(act))==0) { p->f = &identity::f; p->fc = &identity::fc; p->df = &identity::df; p->name=identity::name; return p;}
+	if(strncmp(act, vlrelu::name, strlen(act))==0) { p->f = &vlrelu::f; p->fc = &vlrelu::fc; p->df = &vlrelu::df; p->name=vlrelu::name; return p;}
+	if(strncmp(act, lrelu::name, strlen(act))==0) { p->f = &lrelu::f; p->fc = &lrelu::fc; p->df = &lrelu::df; p->name=lrelu::name; return p;}
+	if(strncmp(act, relu::name, strlen(act))==0) { p->f = &relu::f; p->fc = &relu::fc;p->df = &relu::df; p->name=relu::name;return p;}
+	if(strncmp(act, sigmoid::name, strlen(act))==0) { p->f = &sigmoid::f; p->fc = &sigmoid::fc;p->df = &sigmoid::df; p->name=sigmoid::name; return p;}
+	if(strncmp(act, elu::name, strlen(act))==0) { p->f = &elu::f; p->fc = &elu::fc; p->df = &elu::df; p->name=elu::name; return p;}
+	if(strncmp(act, none::name, strlen(act))==0) { p->f = &none::f; p->fc = &none::fc; p->df = &none::df; p->name=none::name; return p;}
+	if(strncmp(act, softmax::name, strlen(act))==0) { p->f = &softmax::f; p->fc = &softmax::fc;p->df = &softmax::df; p->name = softmax::name; return p; }
+	if(strncmp(act, brokemax::name, strlen(act))==0) { p->f = &brokemax::f; p->fc = &brokemax::fc;p->df = &brokemax::df; p->name = brokemax::name; return p; }
 	delete p;
 	return NULL;
 }

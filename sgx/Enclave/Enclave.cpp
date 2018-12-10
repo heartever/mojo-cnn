@@ -2,15 +2,21 @@
 
 #include <stdarg.h>  // va_list etc.
 #include <stdio.h>
+#include <stdlib.h>
 
 using namespace std;
 
-//#include "cost.h" // test: add cnn related files 1-by-1 
+#include "cost.h" 
 #include "activation.h"
+#include "core_math.h"
+//--------------- the above files passed
 
-//#include "solver.h"
 
-//#include "layer.h"
+//#include "mnist_parser.h" // file IO
+#include "solver.h" // only supported sgd, need more time here
+
+#include "layer.h"
+
 
 //------------------------------------------------------------------------------
 /*
@@ -26,6 +32,8 @@ void printf(const char *fmt, ...) {
 	va_end(ap);
 	ocall_print(buf);
 }
+
+void printf(const char *fmt, ...);
 
 int generate_random_number() {
     ocall_print("Processing random number generation...");
