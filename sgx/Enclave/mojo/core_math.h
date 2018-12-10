@@ -37,6 +37,7 @@
 #include <algorithm> 
 #include <immintrin.h>
 
+#include <sgx_trts.h> // sgx_read_rand
 
 namespace mojo
 {
@@ -643,15 +644,26 @@ public:
 	}
 	void fill_random_uniform(float range)
 	{
-		std::mt19937 gen(0);
-		std::uniform_real_distribution<float> dst(-range, range);
-		for (int i = 0; i<_size; i++) x[i] = dst(gen);
+//		std::mt19937 gen(0);
+//		std::uniform_real_distribution<float> dst(-range, range);
+//		for (int i = 0; i<_size; i++) x[i] = dst(gen);
+       // sgx_read_rand((unsigned char *)x, sizeof(float)*_size);
+       // for (int i = 0; i<_size; i++) x[i] = (x[i] + 0.0)*range/( (1ULL<<(sizeof(float))) + 0.0);
+        
 	}
 	void fill_random_normal(float std)
 	{
-		std::mt19937 gen(0);
-		std::normal_distribution<float> dst(0, std);
-		for (int i = 0; i<_size; i++) x[i] = dst(gen);
+	    unsigned char tmp[_size*10]; // 10 uniform -> normal
+	  /*  sgx_read_rand(tmp, _size*10);
+	    
+	    for(int i = 0; i<_size; i++) 
+	    {
+	        float sum = tmp[i*10] + tmp[i*10+1] + tmp[i*10+2] + tmp[i*10+3] + tmp[i*10+4] + tmp[i*10+5] + tmp[i*10+6] + tmp[i*10+7] + tmp[i*10+8] + tmp[i*10+9];
+	        x[i] = (sum - 1275)/255.0;
+	    }*/
+//		std::mt19937 gen(0);
+//		std::normal_distribution<float> dst(0, std);
+//		for (int i = 0; i<_size; i++) x[i] = dst(gen);
 	}
 
 

@@ -3,6 +3,15 @@
 #include <stdarg.h>  // va_list etc.
 #include <stdio.h>
 
+using namespace std;
+
+//#include "cost.h" // test: add cnn related files 1-by-1 
+#include "activation.h"
+
+//#include "solver.h"
+
+//#include "layer.h"
+
 //------------------------------------------------------------------------------
 /*
 * printf:
