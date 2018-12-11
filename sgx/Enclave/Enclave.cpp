@@ -36,6 +36,7 @@ void printf(const char *fmt, ...) {
 void printf(const char *fmt, ...);
 
 int generate_random_number() {
+ 
     ocall_print("Processing random number generation...");
     return 42;
 }

@@ -406,7 +406,7 @@ class matrix
 	// avx mem aligment
 	float *new_x(const int size) { _x_mem = new float[size + 8 + 7];  x = (float *)(((uintptr_t)_x_mem + 32) & ~(uintptr_t)0x1F); return x; }
 public:
-	std::string _name;
+//	char _name[100];
 	int cols, rows, chans;
 	int chan_stride;
 	int chan_aligned;

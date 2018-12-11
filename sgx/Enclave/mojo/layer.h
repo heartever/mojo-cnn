@@ -38,7 +38,8 @@
 #include "activation.h"
 
 #include <map>
-#include <vector>
+//#include <vector>
+#include <queue>
 
 #include "mojo.h"
 #include <sgx_trts.h> // sgx_read_rand
@@ -70,6 +71,8 @@ namespace mojo
 
 #define bail(txt) { printf("ERROR : %s @ %d: line: function %s\n", txt, __FILE__, __LINE__, __FUNCTION__); throw;}
 
+typedef const char* layer_type;
+
 
 //----------------------------------------------------------------------------------------------------------
 // B A S E   L A Y E R
@@ -100,10 +103,10 @@ public:
 	
 	
 	// index of W matrix, index of connected layer
-	std::vector<std::pair<int,base_layer*>> forward_linked_layers;
+	std::queue<std::pair<int,base_layer*>> forward_linked_layers;
 #ifndef MOJO_NO_TRAINING
 	matrix delta;
-	std::vector<std::pair<int,base_layer*>> backward_linked_layers;
+	std::queue<std::pair<int,base_layer*>> backward_linked_layers;
 
 	virtual void distribute_delta(base_layer &top, const matrix &w, const int train = 1) =0;
 	virtual void calculate_dw(const base_layer &top_layer, matrix &dw, const int train =1)=0;
@@ -112,7 +115,7 @@ public:
 #endif
 	virtual void accumulate_signal(const base_layer &top_node, const matrix &w, const int train =0) =0;
 
-	base_layer(const char* layer_name, int _w, int _h=1, int _c=1) : node(_w, _h, _c),  p_act(NULL), _has_weights(true), pad_cols(0), pad_rows(0), _learning_factor(1.f), _use_bias(false), _thread_count(1)
+	base_layer(layer_type layer_name, int _w, int _h=1, int _c=1) : node(_w, _h, _c),  p_act(NULL), _has_weights(true), pad_cols(0), pad_rows(0), _learning_factor(1.f), _use_bias(false), _thread_count(1)
 		#ifndef MOJO_NO_TRAINING
 		,delta(_w,_h,_c,NULL,false)
 		#endif
@@ -151,10 +154,12 @@ public:
 	}
 	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
-		top.forward_linked_layers.push_back(std::make_pair((int)weight_mat_index,this));
+	    //top.forward_linked_layers.begin();
+	   // top.forward_linked_layers.insert(top.forward_linked_layers.begin(), 1, std::make_pair((int)weight_mat_index, this));
+		top.forward_linked_layers.push(std::make_pair((int)weight_mat_index, this));
 		#ifndef MOJO_NO_TRAINING
-		backward_linked_layers.push_back(std::make_pair((int)weight_mat_index,&top));
-		#endif
+	//	backward_linked_layers.push(std::make_pair((int)weight_mat_index,&top));
+		#endif 
 		if (_has_weights)
 		{
 			int rows = node.cols*node.rows*node.chans;
@@ -177,7 +182,10 @@ public:
 class input_layer : public base_layer
 {
 public:
-	input_layer(const char *layer_name, int _w, int _h=1, int _c=1) : base_layer(layer_name,_w,_h,_c) {p_act=new_activation_function("identity"); }
+	input_layer(layer_type layer_name, int _w, int _h=1, int _c=1) : base_layer(layer_name,_w,_h,_c)
+    {
+        p_act=new_activation_function("identity");
+    }
 	virtual  ~input_layer(){}
 	virtual void activate_nodes() { /*node.reset_empty_chans(); */}
 	virtual void distribute_delta(base_layer &top, const matrix &w, const int train =1) {}
@@ -212,7 +220,7 @@ public:
 class fully_connected_layer : public base_layer
 {
 public:
-	fully_connected_layer(const char *layer_name, int _size, activation_function *p) : base_layer(layer_name, _size, 1, 1) 
+	fully_connected_layer(layer_type layer_name, int _size, activation_function *p) : base_layer(layer_name, _size, 1, 1) 
 	{
 		p_act = p; _use_bias = true;	
 		bias = matrix(node.cols, node.rows, node.chans);
@@ -355,12 +363,12 @@ protected:
 	// uses a map to connect pooled result to top layer
 	std::vector<int> _max_map;
 public:
-	max_pooling_layer(const char *layer_name, int pool_size) : base_layer(layer_name, 1)
+	max_pooling_layer(layer_type layer_name, int pool_size) : base_layer(layer_name, 1)
 	{
 		 _stride = pool_size; _pool_size = pool_size; //layer_type=pool_type;
 		_has_weights = false;
 	}
-	max_pooling_layer(const char *layer_name, int pool_size, int stride ) : base_layer(layer_name, 1)
+	max_pooling_layer(layer_type layer_name, int pool_size, int stride ) : base_layer(layer_name, 1)
 	{
 		_stride= stride; _pool_size=pool_size;  //layer_type=pool_type;
 		_has_weights = false;
@@ -526,9 +534,9 @@ public:
 class semi_stochastic_pooling_layer :  public max_pooling_layer
 {
 public:
-	semi_stochastic_pooling_layer(const char *layer_name, int pool_size) : max_pooling_layer(layer_name, pool_size) {}
+	semi_stochastic_pooling_layer(layer_type layer_name, int pool_size) : max_pooling_layer(layer_name, pool_size) {}
 	
-	semi_stochastic_pooling_layer(const char *layer_name, int pool_size, int stride) : max_pooling_layer(layer_name, pool_size, stride){}
+	semi_stochastic_pooling_layer(layer_type layer_name, int pool_size, int stride) : max_pooling_layer(layer_name, pool_size, stride){}
 
 	virtual char *get_config_string() 
 	{
@@ -637,7 +645,7 @@ class dropout_layer : public base_layer
 	//std::map<const base_layer*, matrix>  drop_mask;
 	matrix  drop_mask;
 public:
-	dropout_layer(const char *layer_name, float dropout_rate) : base_layer(layer_name, 1)
+	dropout_layer(layer_type layer_name, float dropout_rate) : base_layer(layer_name, 1)
 	{
 		_has_weights = false;
 		_dropout_rate = dropout_rate;
@@ -728,7 +736,7 @@ class maxout_layer : public base_layer
 	int _pool;
 	matrix max_map;
 public:
-	maxout_layer(const char *layer_name, int  pool_chans) : base_layer(layer_name, 1)
+	maxout_layer(layer_type layer_name, int  pool_chans) : base_layer(layer_name, 1)
 	{
 		_pool = pool_chans;
 		if (_pool < 2) _pool = 2;
@@ -769,12 +777,12 @@ public:
 	{
 		// wasteful to add weight matrix (1x1x1), but makes other parts of code more OO
 		// bad will happen if try to put more than one pool layer
-		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index, this));
+		top.forward_linked_layers.push(std::make_pair(weight_mat_index, this));
 		int w = (top.node.cols) / 1;
 		int h = (top.node.rows) / 1;
 		resize(w, h, top.node.chans);
 #ifndef MOJO_NO_TRAINING
-		backward_linked_layers.push_back(std::make_pair(weight_mat_index, &top));
+		backward_linked_layers.push(std::make_pair(weight_mat_index, &top));
 #endif
 		return NULL;
 		//return new matrix(1, 1, 1);
@@ -850,14 +858,14 @@ public:
 	int groups;
 
 
-	convolution_layer(const char *layer_name, int _w, int _c, int _s, activation_function *p ) : base_layer(layer_name, _w, _w, _c) 
+	convolution_layer(layer_type layer_name, int _w, int _c, int _s, activation_function *p ) : base_layer(layer_name, _w, _w, _c) 
 	{
 		p_act=p; _stride =_s; kernel_rows=_w; kernel_cols=_w; maps=_c;kernels_per_map=0; pad_cols = kernel_cols-1; pad_rows = kernel_rows-1;
 		_use_bias = true;
 		groups=1;
 	}
 
-	convolution_layer(const char *layer_name, int _w, int _c, int _s, int _g, activation_function *p ) : base_layer(layer_name, _w, _w, _c) 
+	convolution_layer(layer_type layer_name, int _w, int _c, int _s, int _g, activation_function *p ) : base_layer(layer_name, _w, _w, _c) 
 	{
 		p_act=p; _stride =_s; kernel_rows=_w; kernel_cols=_w; maps=_c;kernels_per_map=0; pad_cols = kernel_cols-1; pad_rows = kernel_rows-1;
 		_use_bias = true;
@@ -931,9 +939,9 @@ public:
 	// this connection work won't work with multiple top layers (yet)
 	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
-		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index,this));
+		top.forward_linked_layers.push(std::make_pair(weight_mat_index,this));
 		#ifndef MOJO_NO_TRAINING
-		backward_linked_layers.push_back(std::make_pair(weight_mat_index,&top));
+		backward_linked_layers.push(std::make_pair(weight_mat_index,&top));
 		#endif
 		// re-shuffle these things so weights of size kernel w,h,kerns - node of size see below
 		//int total_kernels=top.node.chans*node.chans;
@@ -1537,7 +1545,7 @@ public:
 	static const int _pool=2;
 
 
-	deepcnet_layer(const char *layer_name, int _c, activation_function *p) : base_layer(layer_name, 2, 2, _c)
+	deepcnet_layer(layer_type layer_name, int _c, activation_function *p) : base_layer(layer_name, 2, 2, _c)
 	{
 		p_act = p; _stride = 1; kernel_rows = 2; kernel_cols = 2; maps = _c; 
 		kernels_per_map = 0; pad_cols = 1; pad_rows = 1;
@@ -1579,9 +1587,9 @@ public:
 	// this connection work won't work with multiple top layers (yet)
 	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
-		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index, this));
+		top.forward_linked_layers.push(std::make_pair(weight_mat_index, this));
 #ifndef MOJO_NO_TRAINING
-		backward_linked_layers.push_back(std::make_pair(weight_mat_index, &top));
+		backward_linked_layers.push(std::make_pair(weight_mat_index, &top));
 #endif
 		// re-shuffle these things so weights of size kernel w,h,kerns - node of size see below
 		//int total_kernels=top.node.chans*node.chans;
@@ -1803,7 +1811,7 @@ class concatenation_layer : public base_layer
 	int _maps;
 	mojo::pad_type _pad_type;
 public:
-	concatenation_layer(const char *layer_name, int _w, int _h, mojo::pad_type p= mojo::zero) : base_layer(layer_name, _w, _h)
+	concatenation_layer(layer_type layer_name, int _w, int _h, mojo::pad_type p= mojo::zero) : base_layer(layer_name, _w, _h)
 	{
 		_maps = 0;
 		_pad_type = p;
@@ -1938,7 +1946,7 @@ class shuffle_layer : public base_layer
 {
 	int groups;
 public:
-	shuffle_layer(const char *layer_name, int  _groups) : base_layer(layer_name, 1)
+	shuffle_layer(layer_type layer_name, int  _groups) : base_layer(layer_name, 1)
 	{
 		groups = _groups;
 		if (groups < 1) groups = 1;
@@ -1980,12 +1988,12 @@ public:
 	{
 		// wasteful to add weight matrix (1x1x1), but makes other parts of code more OO
 		// bad will happen if try to put more than one top layer
-		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index, this));
+		top.forward_linked_layers.push(std::make_pair(weight_mat_index, this));
 		int w = (top.node.cols) / 1;
 		int h = (top.node.rows) / 1;
 		resize(w, h, top.node.chans);
 #ifndef MOJO_NO_TRAINING
-		backward_linked_layers.push_back(std::make_pair(weight_mat_index, &top));
+		backward_linked_layers.push(std::make_pair(weight_mat_index, &top));
 #endif
 		return NULL;
 		//return new matrix(1, 1, 1);
@@ -2040,13 +2048,13 @@ public:
 // N E W    L A Y E R 
 //
 // "input", "fully_connected","max_pool","convolution","concatination"
-base_layer *new_layer(const char *layer_name, const char *config)
+base_layer *new_layer(layer_type layer_name, const char *config)
 {
     char *input;
-    char *delim = " \n";
+    char delim[] = " \n";
     input = strtok((char *)config, delim);
     
-    int w,h,c,s,g;
+    int w, h, c, s, g;
     
     if(strncmp(input, "input", strlen("input")) == 0)
     {
@@ -2054,9 +2062,9 @@ base_layer *new_layer(const char *layer_name, const char *config)
         char *hs = strtok(NULL, delim); h = str2int(hs);
         char *cs = strtok(NULL, delim); c = str2int(cs);
         
-        base_layer *ret;
         
-        ret = new input_layer(layer_name, w, h, c);
+        
+        return new input_layer(layer_name, w, h, c);
     }
     
 //	std::istringstream iss(config); 
