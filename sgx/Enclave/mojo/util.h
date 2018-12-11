@@ -181,10 +181,47 @@ static int str2int(char *str)
     return result;
 }
 
+static float stof(char* s){
+  float rez = 0, fact = 1;
+  if (*s == '-'){
+    s++;
+    fact = -1;
+  };
+  for (int point_seen = 0; *s; s++){
+    if (*s == '.'){
+      point_seen = 1; 
+      continue;
+    };
+    int d = *s - '0';
+    if (d >= 0 && d <= 9){
+      if (point_seen) fact /= 10.0f;
+      rez = rez * 10.0f + (float)d;
+    };
+  };
+  return rez * fact;
+};
+
 #define int2str(a) itoa((long long)a)
 #define float2str(a) dtoa((long double)a)
 
-void printf(const char *fmt, ...);
+#include "../Enclave_t.h"
+
+#include <stdarg.h>  // va_list etc.
+
+//------------------------------------------------------------------------------
+/*
+* printf:
+*   Invokes OCALL to display the enclave buffer to the terminal.
+*/
+//------------------------------------------------------------------------------
+void printf(const char *fmt, ...) { 
+	char buf[BUFSIZ] = { '\0' };
+	va_list ap;
+	va_start(ap, fmt);
+	vsnprintf(buf, BUFSIZ, fmt, ap);
+	va_end(ap);
+	ocall_print(buf);
+}
 
 /*
 // class to handle timing and drawing text progress output

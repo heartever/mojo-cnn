@@ -68,7 +68,7 @@ namespace mojo
 	}
 	*/
 
-#define bail(txt) { printf("ERROR : %s @ %d: line: function %s\n", txt, __FILE__, __LINE__, __FUNCTION__); throw;}
+#define bail(txt) { printf("ERROR : %s @ file: %s %d: line: function %s\n", txt, __FILE__, __LINE__, __FUNCTION__); throw;}
 
 
 //----------------------------------------------------------------------------------------------------------
@@ -391,7 +391,7 @@ public:
 	virtual void resize(int _w, int _h=1, int _c=1)
 	{
 		if(_w<1) _w=1; if(_h<1) _h=1; if(_c<1) _c=1;
-		_max_map.resize(_w*_h*_c);
+		//_max_map.resize(_w*_h*_c);  //removed by ww31
 		base_layer::resize(_w, _h, _c);
 	}
 	// no weights 
@@ -2051,27 +2051,110 @@ base_layer *new_layer(const char *layer_name, const char *config)
     
     int w,h,c,s,g;
     
-    base_layer *ret;
-    
     if(strncmp(input, "input", strlen("input")) == 0)
     {
         char *ws = strtok(NULL, delim); w = str2int(ws);
         char *hs = strtok(NULL, delim); h = str2int(hs);
         char *cs = strtok(NULL, delim); c = str2int(cs);
         
+        return new input_layer(layer_name, w, h, c);
+    }else if(strncmp(input, "fully_connected", strlen("fully_connected")) == 0) 
+	{
+		char *cs = strtok(NULL, delim); c = str2int(cs);
+		char *act = strtok(NULL, delim);
+	
+		if (c <= 0) bail("fully_connected layer has invalid output channels");
+		//if (act.empty()) bail("fully_connected layer missing activation");
+		return new fully_connected_layer(layer_name, c, new_activation_function(act));
+	}else if(strncmp(input, "softmax", strlen("softmax")) == 0) 
+	{
+		char *cs = strtok(NULL, delim); c = str2int(cs);
+		
+		if (c <= 0) bail("softmax layer has invalid output channels");
+		return new fully_connected_layer(layer_name, c, new_activation_function("softmax"));
+	}else if(strncmp(input, "brokemax", strlen("brokemax")) == 0) 
+	{
+		char *cs = strtok(NULL, delim); c = str2int(cs);
+		
+		return new fully_connected_layer(layer_name, c, new_activation_function("brokemax"));
+	}else if(strncmp(input, "max_pool", strlen("max_pool")) == 0)
+	{
+	    char *cs = strtok(NULL, delim); c = str2int(cs);
+        char *ss = strtok(NULL, delim); s = str2int(ss);
         
+		if(s > 0 && s <= c)
+			return new max_pooling_layer(layer_name, c, s);
+		else
+			return new max_pooling_layer(layer_name, c);
+	}else if(strncmp(input, "mfm", strlen("mfm")) == 0) 
+	{
+		char *cs = strtok(NULL, delim); c = str2int(cs);
+		return new maxout_layer(layer_name, c);
+	}else if(strncmp(input, "semi_stochastic_pool", strlen("semi_stochastic_pool")) == 0) 
+	{
+		char *cs = strtok(NULL, delim); c = str2int(cs);
+        char *ss = strtok(NULL, delim); s = str2int(ss);
         
-        ret = new input_layer(layer_name, w, h, c);
-    }
-    
+		if (s > 0 && s <= c)
+			return new semi_stochastic_pooling_layer(layer_name, c, s);
+		else
+			return new semi_stochastic_pooling_layer(layer_name, c);
+	}else if(strncmp(input, "deepcnet", strlen("deepcnet")) == 0) 
+	{
+		char *cs = strtok(NULL, delim); c = str2int(cs);
+		char *act = strtok(NULL, delim);
+
+		return new deepcnet_layer(layer_name, c, new_activation_function(act));
+
+	}else if(strncmp(input, "convolution", strlen("convolution")) == 0)
+	{
+	    char *ws = strtok(NULL, delim); w = str2int(ws);
+        char *cs = strtok(NULL, delim); c = str2int(cs);
+        char *ss = strtok(NULL, delim); s = str2int(ss);
+        char *act = strtok(NULL, delim);
+        
+		return new convolution_layer(layer_name, w,c,s, new_activation_function(act));
+	}else if(strncmp(input, "group_convolution", strlen("group_convolution")) == 0)
+	{
+		char *ws = strtok(NULL, delim); w = str2int(ws);
+        char *cs = strtok(NULL, delim); c = str2int(cs);
+        char *ss = strtok(NULL, delim); s = str2int(ss);
+        char *gs = strtok(NULL, delim); g = str2int(gs);
+        char *act = strtok(NULL, delim);
+        
+		return new convolution_layer(layer_name, w,c,s, g, new_activation_function(act));
+	}else if(strncmp(input, "shuffle", strlen("shuffle")) == 0)
+	{
+		char *gs = strtok(NULL, delim); g = str2int(gs);
+		return new shuffle_layer(layer_name, g);
+	}else if(strncmp(input, "dropout", strlen("dropout")) == 0)
+	{
+		float fc;
+		char *fcs = strtok(NULL, delim); fc = stof(fcs);
+
+		return new dropout_layer(layer_name, fc);
+	}else if((strncmp(input, "resize", strlen("resize")) == 0) || (strncmp(input, "concatenate", strlen("concatenate")) == 0) )
+	{
+		char *ws = strtok(NULL, delim); w = str2int(ws);
+		char *pad = strtok(NULL, delim);
+
+		mojo::pad_type p = mojo::zero;
+		
+		if (strncmp(pad, "median", strlen("median")) == 0) p = mojo::median_edge;
+		else if (strncmp(pad, "median_edge", strlen("median_edge")) == 0) p = mojo::median_edge;
+		else if (strncmp(pad, "edge", strlen("edge")) == 0) p = mojo::edge;
+		
+		return new concatenation_layer(layer_name, w,w, p);
+	}else
+	{
+		bail("layer type not valid: ");
+		printf("error string: %s\n", input);
+	}
 //	std::istringstream iss(config); 
 //	std::string str;
 //	iss>>str;
 	
-	/*
-	
-	
-	if(str.compare("input")==0)
+	/*if(str.compare("input")==0)
 	{
 		iss>>w; iss>>h; iss>>c;
 		return new input_layer(layer_name, w,h,c);

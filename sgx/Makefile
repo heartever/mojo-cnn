@@ -123,7 +123,7 @@ Enclave_Cpp_Files := Enclave/Enclave.cpp
 # Enclave_Include_Paths := -IInclude -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport
 Enclave_Include_Paths := -IEnclave/mojo -IEnclave/msse4 -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -I$(SGX_SDK)/include/libcxx
 
-Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Enclave_Include_Paths) -fopenmp -DMOJO_OPM -DMOJO_AVX -msse4 -mavx
+Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Enclave_Include_Paths)  -DMOJO_OPM -DMOJO_AVX -msse4 -mavx  #-fopenmp by ww31
 Enclave_Cpp_Flags := $(Enclave_C_Flags) -std=c++11
 Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH) -fopenmp\
 	-Wl,--whole-archive -l$(Trts_Library_Name) -Wl,--no-whole-archive \
