@@ -11,13 +11,18 @@ using namespace std;
 #include "cost.h" 
 #include "activation.h"
 #include "core_math.h"
+#include "layer.h"
+#include "mojo.h"
+#include "util.h"
 //--------------- the above files passed
 
 
 //#include "mnist_parser.h" // file IO
+//#include "network.h"
+
 #include "solver.h" // only supported sgd, need more time here
 
-#include "layer.h"
+
 
 
 
