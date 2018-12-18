@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS_OMP= -I../mojo/ -std=c++11 -fopenmp -O3 -DMOJO_OPM -DMOJO_AVX -msse4 -mavx
+CFLAGS_OMP= -I../mojo/ -std=c++11 -O3 -DMOJO_AVX -msse4 -mavx # -fopenmp -DMOJO_OMP 
 
 all: test train_mnist train_cifar
 

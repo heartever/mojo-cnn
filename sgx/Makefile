@@ -30,7 +30,8 @@
 #
 
 ######## SGX SDK Settings ########
-SGX_DEBUG ?= 1
+#SGX_DEBUG ?= 1
+SGX_PRERELEASE ?= 1
 SGX_SDK ?= /opt/intel/sgxsdk
 #SGX_MODE ?= SIM
 SGX_MODE ?= HW
@@ -80,7 +81,7 @@ App_Cpp_Files := App/test.cpp
  
 App_Include_Paths := -Imojo -I$(SGX_SDK)/include
 
-App_C_Flags := $(SGX_COMMON_CFLAGS) -fopenmp -DMOJO_OPM -DMOJO_AVX -msse4 -mavx -fPIC -Wno-attributes $(App_Include_Paths)
+App_C_Flags := $(SGX_COMMON_CFLAGS) -DMOJO_AVX -msse4 -mavx -fPIC -Wno-attributes $(App_Include_Paths)  #-fopenmp -DMOJO_OPM
 #-D PartyNumber=2
 # Three configuration modes - Debug, prerelease, release
 #   Debug - Macro DEBUG enabled.
@@ -95,7 +96,7 @@ else
 endif
 
 App_Cpp_Flags := $(App_C_Flags) -std=c++11
-App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread -fopenmp
+App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread #-fopenmp
 
 ifneq ($(SGX_MODE), HW)
 	App_Link_Flags += -lsgx_uae_service_sim
@@ -125,13 +126,13 @@ Enclave_Include_Paths := -IEnclave/mojo -IEnclave/msse4 -I$(SGX_SDK)/include -I$
 
 Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -fstack-protector $(Enclave_Include_Paths)  -DMOJO_OPM -DMOJO_AVX -msse4 -mavx  #-fopenmp by ww31
 Enclave_Cpp_Flags := $(Enclave_C_Flags) -std=c++11
-Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH) -fopenmp\
+Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefaultlibs -nostartfiles -L$(SGX_LIBRARY_PATH) \
 	-Wl,--whole-archive -l$(Trts_Library_Name) -Wl,--no-whole-archive \
 	-Wl,--start-group -lsgx_tstdc -lsgx_tstdcxx -lsgx_tcxx -l$(Crypto_Library_Name) -l$(Service_Library_Name) -Wl,--end-group \
 	-Wl,-Bstatic -Wl,-Bsymbolic -Wl,--no-undefined \
 	-Wl,-pie,-eenclave_entry -Wl,--export-dynamic  \
 	-Wl,--defsym,__ImageBase=0
-	# -Wl,--version-script=Enclave/Enclave.lds
+	# -Wl,--version-script=Enclave/Enclave.lds #-fopenmp
 
 Enclave_Cpp_Objects := $(Enclave_Cpp_Files:.cpp=.o)
 
@@ -197,11 +198,15 @@ Enclave/Enclave_t.o: Enclave/Enclave_t.c
 	@$(CC) $(Enclave_C_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
-Enclave/%.o: Enclave/%.cpp Enclave/mojo/layer.h
+Enclave/ziggurat_rand_gen/ziggurat.o: Enclave/ziggurat_rand_gen/ziggurat.cpp
+	@$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
+	@echo "CC   <=  $<"
+
+Enclave/%.o: Enclave/%.cpp Enclave/mojo/network.h Enclave/mojo/activation.h
 	@$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-$(Enclave_Name): Enclave/Enclave_t.o $(Enclave_Cpp_Objects)
+$(Enclave_Name): Enclave/ziggurat_rand_gen/ziggurat.o Enclave/Enclave_t.o $(Enclave_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(Enclave_Link_Flags)
 	@echo "LINK =>  $@"
 
@@ -212,4 +217,4 @@ $(Signed_Enclave_Name): $(Enclave_Name)
 .PHONY: clean
 
 clean:
-	@rm -f $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(App_Cpp_Objects) App/Enclave_u.* $(Enclave_Cpp_Objects) Enclave/Enclave_t.*
+	@rm -f $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(App_Cpp_Objects) App/Enclave_u.* $(Enclave_Cpp_Objects) Enclave/Enclave_t.* Enclave/ziggurat_rand_gen/ziggurat.o

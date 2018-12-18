@@ -143,24 +143,30 @@ char * local_dtoa(char *s, double n) {
     return s;
 }
 
-static char *local_itoa(char *buf, int i) 
+static char* itoa(int value)
 {
-    if (i < 0) {
-        *buf++ = '-';
-        return local_itoa(buf, -i);
-    } else {
-        if (i >= 10)
-            buf = local_itoa(buf, i/10);
-        *buf++ = (i%10) + '0';
-        *buf   = '\000';
-        return buf;
-    }
-}
+    char *str = new char[16];
+    if (value < 0) 
+    {
+        str[0] = '-';
+        value = 0-value;
+    } 
+    int i,j;
+    for(i=1; value > 0; i++,value/=10) 
+        str[i] = value%10+'0'; 
 
-static char *itoa(long long a)
-{
-    char *buffer = new char[16];
-    return local_itoa(buffer, a);
+    for(j=i-1,i=1; j-i>=1; j--,i++) 
+    {
+        str[i] = str[i]^str[j];
+        str[j] = str[i]^str[j];
+        str[i] = str[i]^str[j];
+    }
+    if(str[0] != '-') 
+    {
+        for(i=0; str[i+1]!='\0'; i++)
+            str[i] = str[i+1];
+        str[i] = '\0';
+    }
 }
 
 static char *dtoa(long double a)
@@ -201,7 +207,7 @@ static float stof(char* s){
   return rez * fact;
 };
 
-#define int2str(a) itoa((long long)a)
+//#define int2str(a) itoa((int)(a))
 #define float2str(a) dtoa((long double)a)
 
 #include "../Enclave_t.h"

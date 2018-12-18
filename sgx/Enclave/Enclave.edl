@@ -4,10 +4,31 @@ enclave {
     trusted {
         /* define ECALLs here. */
         public int generate_random_number(void);
+        public void new_network();
+        
+        public int cnn_outsize();
+        public int classification([in, count = cnt]float *testimage, int cnt);
     };
 
     untrusted {
         /* define OCALLs here. */
         void ocall_print([in, string]const char* str);
+        void open_file([in, string] const char* str);
+        void close_file();
+        void read_file([out, size = sz] char *dest, int sz);
+        void mojo_sleep(unsigned milliseconds);
+        
+        int open_networkfile([in, string] const char* str); // filename
+        void ocall_fprint_networkfile([in, string]const char* str); // content
+        
+        char ocall_fread_networkfile();
+        int ocall_getint();
+        float ocall_getfloat();
+        
+        void ocall_read([out, size = sz] char *src, int sz);
+        
+        void end_this_line();
+        
+        void close_networkfile();
     };
 };

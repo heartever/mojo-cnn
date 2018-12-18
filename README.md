@@ -1,3 +1,9 @@
+#### TODO:
+-----
+* Only perform a layer in SGX, instead of the whole network
+* Training
+* Larger networks
+
 |<sub>MSVC Win64</sub>|<sub>GCC Linux64</sub>|
 |:---|:---|
 |[![Build status](https://ci.appveyor.com/api/projects/status/github/gnawice/mojo-cnn?svg=true)](https://ci.appveyor.com/api/projects/status/github/gnawice/mojo-cnn?svg=true)|[![Build Status](https://travis-ci.org/gnawice/mojo-cnn.svg?branch=master)](https://travis-ci.org/gnawice/mojo-cnn)|

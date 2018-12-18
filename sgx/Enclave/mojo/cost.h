@@ -31,7 +31,7 @@
 
 #include <math.h>
 #include <algorithm>
-#include <string.h>
+#include <string>
 
 namespace mojo {
 
@@ -65,24 +65,20 @@ public:
 	const char *name;
 } cost_function;
 
-cost_function* new_cost_function(const char *loss)
+cost_function* new_cost_function(std::string loss)
 {
 	cost_function *p = new cost_function;
-	/*if(loss.compare(cross_entropy::name)==0) { p->cost = &cross_entropy::cost; p->d_cost = &cross_entropy::d_cost; p->name=cross_entropy::name;return p;}
+	if(loss.compare(cross_entropy::name)==0) { p->cost = &cross_entropy::cost; p->d_cost = &cross_entropy::d_cost; p->name=cross_entropy::name;return p;}
 	if(loss.compare(mse::name)==0) { p->cost = &mse::cost; p->d_cost = &mse::d_cost; p->name=mse::name; return p;}
-	//if(loss.compare(triplet_loss::name)==0) { p->E = &triplet_loss::E; p->dE = &triplet_loss::dE; p->name=triplet_loss::name; return p;}*/
-	if(strncmp(loss, cross_entropy::name, strlen(loss))==0) { p->cost = &cross_entropy::cost; p->d_cost = &cross_entropy::d_cost; p->name=cross_entropy::name;return p;}
-	if(strncmp(loss, mse::name, strlen(loss))==0) { p->cost = &mse::cost; p->d_cost = &mse::d_cost; p->name=mse::name; return p;}
-
 	//if(loss.compare(triplet_loss::name)==0) { p->E = &triplet_loss::E; p->dE = &triplet_loss::dE; p->name=triplet_loss::name; return p;}
 	delete p;
 	return NULL;
 }
 
-/*cost_function* new_cost_function(const char *type)
+cost_function* new_cost_function(const char *type)
 {
 	std::string loss(type);
 	return new_cost_function(loss);
-}*/
+}
 
 }

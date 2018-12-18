@@ -30,12 +30,11 @@
 
 #include <math.h>
 #include <algorithm>
-#include <string.h>
+#include <string>
 #include <vector>
 #include <cstdlib>
 
 #include "core_math.h"
-
 
 // hack for VS2010 to handle c++11 for(:)
 #if (_MSC_VER  == 1600)
@@ -190,17 +189,12 @@ public:
 solver* new_solver(const char *type)
 {
 	if(type==NULL) return NULL;
-/*	std::string act(type);
+	std::string act(type);
 	if(act.compare(sgd::name())==0) { return new sgd();}
 	if(act.compare(rmsprop::name())==0) { return new rmsprop();}
 	if(act.compare(adagrad::name())==0) { return new adagrad();}
 	if(act.compare(adam::name())==0) { return new adam();}
-*/
-    if(strncmp(type, sgd::name(), strlen(type))==0) { return new sgd();}
-//	if(strncmp(type, rmsprop::name(), strlen(type))==0) { return new rmsprop();}
-//	if(strncmp(type, adagrad::name(), strlen(type))==0) { return new adagrad();}
-//	if(strncmp(type, adam::name(), strlen(type))==0) { return new adam();}
-	
+
 	return NULL;
 }
 
@@ -208,7 +202,7 @@ solver* new_solver(const char *type)
 
 
 solver* new_solver(const char *type) {return NULL;}
-//solver* new_solver(std::string act){return NULL;}
+solver* new_solver(std::string act){return NULL;}
 
 #endif
 

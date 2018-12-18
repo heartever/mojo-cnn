@@ -42,15 +42,24 @@
 #include <sstream>
 #include <fstream>
 #include <stdio.h>
-//#include <tchar.h>
+#include <stdlib.h>
 
 #include <mojo.h>
 
-//*
+#include <unistd.h>
+
+/*
 #include "mnist_parser.h"
 using namespace mnist;
 std::string data_path="../data/mnist/";
 std::string model_file="../models/mnist_deepcnet.mojo";
+
+/*/
+#include "cifar_parser.h"
+using namespace cifar;
+std::string data_path="../data/cifar-10-batches-bin/";
+std::string model_file="../models/cifar_deepcnet.mojo";
+//*/
 
 /* Global EID shared by multiple threads */
 sgx_enclave_id_t eid = 0;
@@ -60,16 +69,95 @@ void ocall_print(const char* str) {
     printf("%s\n", str);
 }
 
-/*/
-#include "cifar_parser.h"
-using namespace cifar;
-std::string data_path="../data/cifar-10-batches-bin/";
-std::string model_file="../models/cifar_deepcnet.mojo";
-//*/
+void mojo_sleep(unsigned milliseconds) 
+{ 
+    mojo::usleep(milliseconds * 1000); // ?
+} 
 
-void test(mojo::network &cnn, const std::vector<std::vector<float>> &test_images, const std::vector<int> &test_labels)
+FILE *f = NULL;
+void open_file(const char* str)
 {
-	int out_size=cnn.out_size(); // we know this to be 10 for MNIST and CIFAR
+    f = fopen(str, "r");
+    if(!f)
+    {
+        printf("open image file error.\n");
+        exit(0);
+    }
+}
+
+void read_file(char *dest, int sz)
+{
+    fread(dest, sz, 1, f);
+}
+
+void close_file()
+{
+    if(f) fclose(f);
+}
+
+
+// deep network file operations follow
+FILE *fnetwork = NULL;
+int open_networkfile(const char* str)
+{
+    fnetwork = fopen(str, "rwb");
+    if(!fnetwork)
+    {
+        printf("open deep network file error.\n");
+        return 1;
+    }
+    
+    return 0;
+}
+
+// OCall implementations
+void ocall_fprint_networkfile(const char* str) {
+    fprintf(fnetwork, "%s\n", str);
+}
+
+// OCall implementations
+char ocall_fread_networkfile() {
+    char ret = fgetc(fnetwork);
+}
+
+int ocall_getint()
+{
+    int ret;
+    fscanf(fnetwork, "%d", &ret);
+    
+    return ret;
+}
+
+float ocall_getfloat()
+{
+    float ret;
+    fscanf(fnetwork, "%f", &ret);
+    
+    return ret;
+}
+
+void ocall_read(char *src, int sz)
+{
+    fread(src, 1, sz, fnetwork);
+}
+
+void end_this_line()
+{
+    char s[256];
+
+    fgets(s, 256, fnetwork);
+}
+
+void close_networkfile()
+{
+    fflush(fnetwork);
+    if(fnetwork) fclose(fnetwork);
+}
+
+void test(const std::vector<std::vector<float>> &test_images, const std::vector<int> &test_labels)
+{
+	int out_size;
+	cnn_outsize(eid, &out_size); // we know this to be 10 for MNIST and CIFAR
 	int correct_predictions=0;
 
 	// use progress object for simple timing and status updating
@@ -83,9 +171,14 @@ void test(mojo::network &cnn, const std::vector<std::vector<float>> &test_images
 	for(int k=0; k<record_cnt; k++) 
 	{
 		// predict_class returnes the output index of the highest response
-		const int prediction=cnn.predict_class(test_images[k].data());
+	//	printf("=================== record %d ==========\n", k);
+		int prediction = 0;
+		
+	//	printf("test image size: %d\n", test_images[k].size());
+		classification(eid, &prediction, (float *)test_images[k].data(), test_images[k].size()); // input data
+	//	const int prediction=cnn.predict_class(test_images[k].data());
 		if(prediction ==test_labels[k]) correct_predictions++;
-		if(k%1000==0) progress.draw_progress(k);
+		if(k%100==0) progress.draw_progress(k);
 	}
 	float dt = progress.elapsed_seconds();
 	std::cout << "  test time: " << dt << " seconds                                          "<< std::endl;
@@ -106,6 +199,7 @@ int main()
 		return -1;
 	// Initializing the enclave finished.	
 	
+	int randnum;
 	
 	// == parse data
 	// array to hold image data (note that mojo does not require use of std::vector)
@@ -116,21 +210,22 @@ int main()
 	if(!parse_test_data(data_path, test_images, test_labels)) {std::cerr << "error: could not parse data.\n"; return 1;}
 
 	// == setup the network  
-	mojo::network cnn; 
-
+//	mojo::network cnn;
+    
+    new_network(eid);
 	// here we need to prepare mojo cnn to store data from multiple threads
 	// !! enable_external_threads must be set prior to loading or creating a model !!
-	cnn.enable_external_threads(); 
+//	cnn.enable_external_threads(); 
 
 	// load model
-	if(!cnn.read(model_file)) {std::cerr << "error: could not read model.\n"; return 1;}
-	std::cout << "Mojo CNN Configuration:" << std::endl;
-	std::cout << cnn.get_configuration() << std::endl << std::endl;
+//	if(!cnn.read(model_file)) {std::cerr << "error: could not read model.\n"; return 1;}
+//	std::cout << "Mojo CNN Configuration:" << std::endl;
+//	std::cout << cnn.get_configuration() << std::endl << std::endl;
 
 	// == run the test
 	std::cout << "Testing " << data_name() << ":" << std::endl;
 	// this function will loop through all images, call predict, and print out stats
-	test(cnn, test_images, test_labels);	
+	test(test_images, test_labels);	
 
 	std::cout << std::endl;
 	

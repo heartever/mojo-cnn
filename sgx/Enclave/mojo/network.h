@@ -89,14 +89,7 @@ mojo::matrix transform(const mojo::matrix in, const int x_center, const int y_ce
 #endif
 
 
-	// sleep needed for threading
-#ifdef _WIN32
-#include <windows.h>
-	void mojo_sleep(unsigned milliseconds) { Sleep(milliseconds); }
-#else
-#include <unistd.h>
-	void mojo_sleep(unsigned milliseconds) { usleep(milliseconds * 1000); }
-#endif
+
 
 #ifdef MOJO_PROFILE_LAYERS
 #ifdef _WIN32
@@ -297,8 +290,8 @@ public:
 
 	// output size of final layer;
 	int out_size() {return _size;}
-
-	// get input size 
+	
+		// get input size 
 	bool get_input_size(int *w, int *h, int *c)
 	{
 		if(layer_sets[MAIN_LAYER_SET].size()<1) return false; 
@@ -316,6 +309,8 @@ public:
 	}
 
 	inline int get_thread_count() {return _thread_count;}
+	// must call this with max thread count before constructing layers
+	// value <1 will result in thread count = # cores (including hyperthreaded)
 	// must call this with max thread count before constructing layers
 	// value <1 will result in thread count = # cores (including hyperthreaded)
 	void enable_external_threads(int threads = -1)
@@ -355,7 +350,7 @@ public:
 				for(int k=0; k<layer_sets[MAIN_LAYER_SET][j]->bias.size(); k++) 
 					(layer_sets[i])[j]->bias.x[k]=(layer_sets[MAIN_LAYER_SET])[j]->bias.x[k];
 	}
-
+	
 	// used to add some noise to weights
 	void heat_weights()
 	{
@@ -403,7 +398,7 @@ public:
 		for(int i=1; i<(int)layer_sets.size();i++) layer_sets[i].push_back(new_layer(layer_name, layer_config));
 		return true;
 	}
-
+	
 	// connect 2 layers together and initialize weights
 	// top and bottom concepts are reversed from literature
 	// my 'top' is the input of a forward() pass and the 'bottom' is the output
@@ -490,13 +485,26 @@ public:
 				return j;
 		return -1;
 	}
-
+	
 	// get the list of layers used (but not connection information)
 	std::string get_configuration()
 	{
 		std::string str;
+		std::string space("  ");
+		std::string symbol(" : ");
+		
 		// print all layer configs
-		for (int j = 0; j<(int)layer_sets[MAIN_LAYER_SET].size(); j++) str+= "  "+ std::to_string((long long)j) +" : " +layer_sets[MAIN_LAYER_SET][j]->name +" : " + layer_sets[MAIN_LAYER_SET][j]->get_config_string();
+		for (int j = 0; j<(int)layer_sets[MAIN_LAYER_SET].size(); j++) 
+		{
+		    //std::string jstr(dtoa(j));
+		    std::string jstr = dtoa(j);
+
+		    std::string lname(layer_sets[MAIN_LAYER_SET][j]->name);
+		    std::string lsets(layer_sets[MAIN_LAYER_SET][j]->get_config_string());
+		    //str+= "  "+ std::to_string((long long)j) +" : " +layer_sets[MAIN_LAYER_SET][j]->name +" : " + layer_sets[MAIN_LAYER_SET][j]->get_config_string();
+		    str += space + jstr + symbol + lname + symbol + lsets;
+		}
+		
 		str += "\n";
 		// print layer links
 		if (layer_graph.size() <= 0) return str;
@@ -510,13 +518,15 @@ public:
 		}
 		return str;
 	}
-
+	
 	// performs forward pass and returns class index
 	// do not delete or modify the returned pointer. it is a live pointer to the last layer in the network
 	// if calling over multiple threads, provide the thread index since the interal data is not otherwise thread safe
 	int predict_class(const float *in, int _thread_number = -1)
 	{
 		const float* out = forward(in, _thread_number);
+//		for(int i = 0; i < out_size(); i++)
+//		    printf("%d: %f\n", i, out[i]);
 		return arg_max(out, out_size());
 	}
 
@@ -596,56 +606,88 @@ public:
 	*/
 		return layer_sets[_thread_number][layer_sets[_thread_number].size()-1]->node.x;
 	}
+	
+	
+	void fprint_networkfile(const char *fmt, ...) { 
+	    char buf[BUFSIZ] = { '\0' };
+	    va_list ap;
+	    va_start(ap, fmt);
+	    vsnprintf(buf, BUFSIZ, fmt, ap);
+	    va_end(ap);
+	    ocall_fprint_networkfile(buf);
+    }
 
 	//----------------------------------------------------------------------------------------------------------
 	// W R I T E
 	//
 	// write parameters to stream/file
 	// note that this does not persist intermediate training information that could be needed to 'pickup where you left off'
-	bool write(std::ofstream& ofs, bool binary = false, bool final = false)
+	bool write(char *filename, bool binary = false, bool final = false) 
 	{
-		// save layers
+	    int retocall;
+	    open_networkfile(&retocall, filename);
+	    
+	    
+	    // save layers
 		int layer_cnt = (int)layer_sets[MAIN_LAYER_SET].size();
 //		int ignore_cnt = 0;
 //		for (int j = 0; j<(int)layer_sets[0].size(); j++)
 //			if (dynamic_cast<dropout_layer*> (layer_sets[0][j]) != NULL)  ignore_cnt++;
-		ofs<<"mojo01" << std::endl;
-		ofs<<(int)(layer_cnt)<<std::endl;
+        
+        
+        fprint_networkfile("mojo01\n");
+        fprint_networkfile("%d\n", (int)(layer_cnt));        
+//		ofs<<"mojo01" << std::endl;
+//		ofs<<(int)(layer_cnt)<<std::endl;
 		
 		for(int j=0; j<(int)layer_sets[0].size(); j++)
-			ofs << layer_sets[MAIN_LAYER_SET][j]->name << std::endl << layer_sets[MAIN_LAYER_SET][j]->get_config_string();
+		    fprint_networkfile("%s\n%s", layer_sets[MAIN_LAYER_SET][j]->name, layer_sets[MAIN_LAYER_SET][j]->get_config_string());
+		//	ofs << layer_sets[MAIN_LAYER_SET][j]->name << std::endl << layer_sets[MAIN_LAYER_SET][j]->get_config_string();	
+			
 //			if (dynamic_cast<dropout_layer*> (layer_sets[0][j]) != NULL)
 
 		// save graph
-		ofs<<(int)layer_graph.size()<<std::endl;
+		fprint_networkfile("%d\n", (int)layer_graph.size());     
+		//ofs<<(int)layer_graph.size()<<std::endl;
 		for(int j=0; j<(int)layer_graph.size(); j++)
-			ofs<<layer_graph[j].first << std::endl << layer_graph[j].second << std::endl;
+		    fprint_networkfile("%s\n%s\n", layer_graph[j].first, layer_graph[j].second);
+		//	ofs<<layer_graph[j].first << std::endl << layer_graph[j].second << std::endl;
 
 		if(binary)
 		{
-			ofs<<(int)1<<std::endl; // flags that this is binary data
+			//ofs<<(int)1<<std::endl; // flags that this is binary data
+			fprint_networkfile("1\n");
 			// binary version to save space if needed
 			// save bias info
+			
 			for(int j=0; j<(int)layer_sets[MAIN_LAYER_SET].size(); j++)
 				if(layer_sets[MAIN_LAYER_SET][j]->use_bias())
-					ofs.write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
+				    for(int k = 0; k < layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float); k++)
+					    fprint_networkfile("%c", (char*)layer_sets[MAIN_LAYER_SET][j]->bias.x+k);
+					//ofs.write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
 			// save weights
 			for (int j = 0; j < (int)W.size(); j++)
 			{
 				if (W[j])
-					ofs.write((char*)W[j]->x, W[j]->size()*sizeof(float));
+				    for(int k = 0; k < W[j]->size()*sizeof(float); k++)
+				        fprint_networkfile("%c", (char*)W[j]->x+k);
+				//	ofs.write((char*)W[j]->x, W[j]->size()*sizeof(float));
 			}
 		}
 		else
 		{
-			ofs<<(int)0<<std::endl;
+			//ofs<<(int)0<<std::endl;
+			fprint_networkfile("0\n");
 			// save bias info
 			for(int j=0; j<(int)layer_sets[MAIN_LAYER_SET].size(); j++)
 			{
 				if (layer_sets[MAIN_LAYER_SET][j]->use_bias())
 				{
-					for (int k = 0; k < layer_sets[MAIN_LAYER_SET][j]->bias.size(); k++)  ofs << layer_sets[MAIN_LAYER_SET][j]->bias.x[k] << " ";
-					ofs << std::endl;
+					for (int k = 0; k < layer_sets[MAIN_LAYER_SET][j]->bias.size(); k++)  
+					    fprint_networkfile("%f ", layer_sets[MAIN_LAYER_SET][j]->bias.x[k]);
+					    //ofs << layer_sets[MAIN_LAYER_SET][j]->bias.x[k] << " ";
+					fprint_networkfile("\n");
+					//ofs << std::endl;
 				}
 			}
 			// save weights
@@ -653,29 +695,24 @@ public:
 			{
 				if (W[j])
 				{
-					for (int i = 0; i < W[j]->size(); i++) ofs << W[j]->x[i] << " ";
-					ofs << std::endl;
+					for (int i = 0; i < W[j]->size(); i++) 
+					    fprint_networkfile("%f ", W[j]->x[i]);
+					    //ofs << W[j]->x[i] << " ";
+					fprint_networkfile("\n");
+					//ofs << std::endl;
 				}
 			}
 		}
-		ofs.flush();
+		//ofs.flush();
 		
+		close_networkfile();
 		return true;
 	}
-	bool write(std::string &filename, bool binary = false, bool final = false) { 
-		std::ofstream temp((const char *)filename.c_str(), std::ios::binary);
-		return write(temp, binary, final);
-	}//, std::ofstream::binary);
-
-	bool write(char *filename, bool binary = false, bool final = false) 
-	{
-		std::string str= filename;
-		return write(str, binary, final); 
-	}
-
+	
 	// read network from a file/stream
 	
-	std::string getcleanline(std::istream& ifs)
+	bool endoffile;
+	std::string getcleanline()
 	{
 		std::string s;
 
@@ -685,21 +722,30 @@ public:
 		// The sentry object performs various tasks,
 		// such as thread synchronization and updating the stream state.
 
-		std::istream::sentry se(ifs, true);
-		std::streambuf* sb = ifs.rdbuf();
+		//std::istream::sentry se(ifs, true);
+		//std::streambuf* sb = ifs.rdbuf();
 
 		for (;;) {
-			int c = sb->sbumpc();
+			char c;
+
+			ocall_fread_networkfile(&c);//sb->sbumpc();
+			//printf("%d\n", c);
 			switch (c) {
 			case '\n':
+			    //printf("s = %s\n", s);
 				return s;
 			case '\r':
-				if (sb->sgetc() == '\n') sb->sbumpc();
-				return s;
+				//if (sb->sgetc() == '\n') sb->sbumpc();
+				char cc; ocall_fread_networkfile(&cc);
+				//printf("\\r got, %d\n", c, cc);
+				if (cc == '\n') 
+				    return s;
 			case EOF:
+			    endoffile = true;
+			    //printf("end of file, %d, %s\n", c, s);
 				// Also handle the case when the last line has no line ending
-				if (s.empty()) ifs.setstate(std::ios::eofbit);
-				return s;
+				if (s.empty()) //ifs.setstate(std::ios::eofbit);
+				    return s;
 			default:
 				s += (char)c;
 			}
@@ -709,31 +755,34 @@ public:
 	//----------------------------------------------------------------------------------------------------------
 	// R E A D
 	//
-	bool read(std::istream &ifs)
+	bool read()
 	{
-		if(!ifs.good()) return false;
+//		if(!ifs.good()) return false;
 		std::string s;
-		s = getcleanline(ifs);
+		s = getcleanline();
 		int layer_count;
 		int version = 0;
 		if (s.compare("mojo01")==0)
 		{
-			s = getcleanline(ifs);
+			s = getcleanline();
 			layer_count = atoi(s.c_str());
 			version = 1;
+			
+			//printf("version = 1, layer_count: %d, line: %s\n", layer_count, s);
 		}
 		else if (s.find("mojo:") == 0)
 		{
+		    //printf("version = -1\n");
 			version = -1;
 			int cnt = 1;
 
-			while (!ifs.eof())
+			while (!endoffile)
 			{
-				s = getcleanline(ifs);
+				s = getcleanline();
 				if (s.empty()) continue;
 				if(s[0]=='#') continue;
-
-				push_back(int2str(cnt).c_str(), s.c_str());
+                
+				push_back(dtoa(cnt), s.c_str());
 				cnt++;
 			}
 			connect_all();
@@ -743,40 +792,60 @@ public:
 			return true;
 		}
 		else
+		{
 			layer_count = atoi(s.c_str());
+			
+			//printf("layer_count: %d, line: %s\n", layer_count, s);
+		}
 		// read layer def
 		std::string layer_name;
 		std::string layer_def;
 		for (auto i=0; i<layer_count; i++)
 		{
-			layer_name = getcleanline(ifs);
-			layer_def = getcleanline(ifs);
-			push_back(layer_name.c_str(),layer_def.c_str());
+			layer_name = getcleanline();
+			layer_def = getcleanline();
+			push_back(layer_name.c_str(), layer_def.c_str());
+			
+			//printf("%s: %s\n", layer_name.c_str(), layer_def.c_str());
 		}
 
 		// read graph
 		int graph_count;
-		ifs>>graph_count;
-		getline(ifs,s); // get endline
+		//ifs>>graph_count;
+		ocall_getint(&graph_count);
+		
+		end_this_line();
+		
+		//printf("graph_count: %d\n", graph_count);
+		//getline(ifs,s); // get endline; just want to end reading the line? the result is not important
 		if (graph_count <= 0)
 		{
 			connect_all();
 		}
 		else
-		{
-		std::string layer_name1;
-		std::string layer_name2;
-		for (auto i=0; i<graph_count; i++)
-		{
-			layer_name1= getcleanline(ifs);
-			layer_name2 = getcleanline(ifs);
-			connect(layer_name1.c_str(),layer_name2.c_str());
-		}
+	    {
+		    std::string layer_name1;
+		    std::string layer_name2;
+		    for (auto i=0; i<graph_count; i++)
+		    {
+			    layer_name1= getcleanline();
+			   // printf("%d: %s", i, layer_name1.c_str());
+			    layer_name2 = getcleanline();
+			    
+			    
+			    //printf("\t%s", layer_name2.c_str());
+			    
+			    //printf("\n");
+			    
+			    connect(layer_name1.c_str(), layer_name2.c_str());
+		    }
 		}
 
 		int binary;
-		s=getcleanline(ifs); // get endline
+		s=getcleanline(); // get endline
 		binary = atoi(s.c_str());
+		
+		//printf("binary: %d\n", binary);
 
 		// binary version to save space if needed
 		if(binary==1)
@@ -786,15 +855,32 @@ public:
 				{
 					//int c = layer_sets[MAIN_LAYER_SET][j]->bias.chans;
 					//int cs = layer_sets[MAIN_LAYER_SET][j]->bias.chan_stride;
-					//for (int i = 0; i < layer_sets[MAIN_LAYER_SET][j]->bias.size(); i++)
-						ifs.read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
+					/*for (int i = 0; i < layer_sets[MAIN_LAYER_SET][j]->bias.size(); i++)
+					{
+					    ocall_getfloat((float *)layer_sets[MAIN_LAYER_SET][j]->bias.x + i);
+					} // ww31, seems not right
+					*/
+					
+					// use ocall_read instead, ww31
+					ocall_read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
+					
+					//	ifs.read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
 				}
 			for (int j = 0; j < (int)W.size(); j++)
 			{
 
 				if (W[j])
 				{
-					ifs.read((char*)W[j]->x, W[j]->size()*sizeof(float));
+				    /*for(int i = 0; i < W[j]->size(); i++)
+				    {
+				        ocall_getfloat((float *)W[j]->x + i);
+				        
+				        
+				    }*/
+				    ocall_read((char*)W[j]->x, W[j]->size()*sizeof(float));
+				//    for(int i = 0; i < W[j]->size(); i++)
+				//        printf("W[j]->x[%d] = %f\n", i, W[j]->x[i]);
+				//	ifs.read((char*)W[j]->x, W[j]->size()*sizeof(float));
 				}
 			}
 		}
@@ -811,10 +897,14 @@ public:
 				//	for (int i = 0; i < c; i++)
 					for (int k = 0; k < layer_sets[MAIN_LAYER_SET][j]->bias.size(); k++)
 					{
-						ifs >> layer_sets[MAIN_LAYER_SET][j]->bias.x[k];
+						//ifs >> layer_sets[MAIN_LAYER_SET][j]->bias.x[k];
+						
+						ocall_getfloat(&layer_sets[MAIN_LAYER_SET][j]->bias.x[k]);
+						
 						//std::cout << layer_sets[MAIN_LAYER_SET][j]->bias.x[k] << ",";
 					}
-					ifs.ignore();// getline(ifs, s); // get endline
+					//ifs.ignore();// getline(ifs, s); // get endline
+					end_this_line();
 				}
 			}
 
@@ -823,8 +913,11 @@ public:
 			{
 				if (W[j])
 				{
-					for (int i = 0; i < W[j]->size(); i++) ifs >> W[j]->x[i];
-					ifs.ignore(); //getline(ifs, s); // get endline
+					for (int i = 0; i < W[j]->size(); i++) 
+					    ocall_getfloat(&W[j]->x[i]);
+					    //ifs >> W[j]->x[i];
+					//ifs.ignore(); //getline(ifs, s); // get endline
+					end_this_line();
 				}
 			}
 		}
@@ -834,27 +927,34 @@ public:
 
 		return true;
 	}
-	bool read(std::string filename)
+	bool read(char *filename)
 	{
-		std::ifstream fs(filename.c_str(),std::ios::binary);
-		if (fs.is_open())
+		//std::ifstream fs(filename.c_str(),std::ios::binary);
+		int retocall;
+	    open_networkfile(&retocall, filename);
+		if (retocall == 0)
 		{
-			bool ret = read(fs);
-			fs.close();
+		    endoffile = false;
+			bool ret = read();
+			close_networkfile();
 			return ret;
 		}
 		else return false;
 	}
-	bool read(const char *filename) { return  read(std::string(filename)); }
-
-#ifndef MOJO_NO_TRAINING  // this is surely broke by now and will need to be fixed
-
+//	bool read(const char *filename) { return  read(std::string(filename)); }
+	
+#ifndef MOJO_NO_TRAINING  // this is surely broke by now and will need to be fixed	
 	// ===========================================================================
 	// training part
 	// ===========================================================================
 
 	// resets the state of all batches to 'free' state
-	void reset_mini_batch() { memset(batch_open.data(), BATCH_FREE, batch_open.size()); }
+	//void reset_mini_batch() { memset(batch_open.data(), BATCH_FREE, batch_open.size()); }
+	void reset_mini_batch() 
+	{ 
+	    for(int i = 0; i < batch_open.size(); i++)
+	        memset(&batch_open[i], BATCH_FREE, sizeof(char)); 
+	}
 	
 	// sets up number of mini batches (storage for sets of weight deltas)
 	void set_mini_batch_size(int batch_cnt)
@@ -988,7 +1088,7 @@ public:
 	void set_smart_train_level(float _level) { _skip_energy_level = _level; }
 	void set_max_epochs(int max_e) { if (max_e <= 0) max_e = 1; max_epochs = max_e; }
 	int get_epoch() { return epoch_count; }
-
+	
 	// goal here is to update the weights W. 
 	// use w_new = w_old - alpha dE/dw
 	// E = sum: 1/2*||y-target||^2
@@ -1093,7 +1193,7 @@ public:
 		best_accuracy_count = 0;
 		best_estimated_accuracy = 0;
 	}
-
+	
 	//----------------------------------------------------------------------------------------------------------
 	// u p d a t e _ s m a r t _ t r a i n
 	//
@@ -1205,8 +1305,7 @@ public:
 			sync_mini_batch(); // resets _batch_index to 0
 		unlock_batch();
 	}
-
-
+	
 	mojo::matrix make_input(float *in, const int _thread_number)
 	{
 		mojo::matrix augmented_input;// = auto_augmentation();
@@ -1227,12 +1326,17 @@ public:
 		{
 
 			augmented_input.resize(in_size, 1, 1);
-			float s = ((float)(rand() % 101) / 50.f - 1.f)*augment_scale;
-			float t = ((float)(rand() % 101) / 50.f - 1.f)*augment_theta;
-			bool flip_h = ((rand() % 2)*augment_h_flip) ? true: false;
-			bool flip_v = ((rand() % 2)*augment_v_flip) ? true: false;
-			int shift_x = (rand() % (augment_x * 2 + 1)) - augment_x;
-			int shift_y = (rand() % (augment_y * 2 + 1)) - augment_y;
+			
+			unsigned int randint[6];
+			sgx_read_rand((unsigned char *)randint, sizeof(int)*6);
+			float s = ((float)(randint[0] % 101) / 50.f - 1.f)*augment_scale;
+			float t = ((float)(randint[1] % 101) / 50.f - 1.f)*augment_theta;
+			//float s = ((float)(rand() % 101) / 50.f - 1.f)*augment_scale;
+			//float t = ((float)(rand() % 101) / 50.f - 1.f)*augment_theta;
+			bool flip_h = ((randint[2] % 2)*augment_h_flip) ? true: false;
+			bool flip_v = ((randint[3] % 2)*augment_v_flip) ? true: false;
+			int shift_x = (randint[4] % (augment_x * 2 + 1)) - augment_x;
+			int shift_y = (randint[5] % (augment_y * 2 + 1)) - augment_y;
 			int offset = 0;
 			__for__(auto layer __in__ inputs)
 			{
@@ -1268,8 +1372,7 @@ public:
 		}
 		return augmented_input;
 	}
-
-
+	
 	//----------------------------------------------------------------------------------------------------------
 	// T R A I N   C L A S S 
 	//
@@ -1304,13 +1407,16 @@ public:
 				m = transform(m, m.cols / 2, m.rows / 2, m.cols, t, 1+s);
 			}
 #endif
+            unsigned int randint[4];
+			sgx_read_rand((unsigned char *)randint, 4);
+			
 			if (augment_h_flip)
-				if ((rand() % 2) == 0)
+				if ((randint[0] % 2) == 0)
 					m = m.flip_cols();
 			if (augment_v_flip)
-				if ((rand() % 2) == 0)
+				if ((randint[1] % 2) == 0)
 					m = m.flip_rows();
-			augmented_input = m.shift((rand() % (augment_x * 2 + 1)) - augment_x, (rand() % (augment_y * 2 + 1)) - augment_y, augment_pad);
+			augmented_input = m.shift((randint[2] % (augment_x * 2 + 1)) - augment_x, (randint[3] % (augment_y * 2 + 1)) - augment_y, augment_pad);
 			
 			input = augmented_input.x;
 		}
@@ -1517,7 +1623,7 @@ public:
 		backward_hidden(my_batch_index, thread_number);
 		return true;
 	}
-
+	
 #else
 
 	float get_learning_rate() {return 0;}
@@ -1530,7 +1636,6 @@ public:
 	void set_smart_train(bool _use) {}
 
 #endif
-
 };
 
 }

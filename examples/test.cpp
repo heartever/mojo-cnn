@@ -43,7 +43,7 @@
 
 #include <mojo.h>
 
-//*
+/*
 #include "mnist_parser.h"
 using namespace mnist;
 std::string data_path="../data/mnist/";
@@ -71,6 +71,7 @@ void test(mojo::network &cnn, const std::vector<std::vector<float>> &test_images
 	#pragma omp parallel for reduction(+:correct_predictions) schedule(dynamic)  // dynamic schedule just helps the progress class to work correcly
 	for(int k=0; k<record_cnt; k++) 
 	{
+	//    printf("=================== record %d ==========\n", k);
 		// predict_class returnes the output index of the highest response
 		const int prediction=cnn.predict_class(test_images[k].data());
 		if(prediction ==test_labels[k]) correct_predictions++;

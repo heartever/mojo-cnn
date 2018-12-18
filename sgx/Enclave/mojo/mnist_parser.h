@@ -39,10 +39,10 @@
 #pragma once
 
 
-#include <iostream> // cout
+/*#include <iostream> // cout
 #include <sstream>
 #include <fstream>
-#include <iomanip> //setw
+#include <iomanip> //setw*/
 #include <random>
 #include <stdio.h>
 
@@ -50,6 +50,7 @@
 namespace mnist
 {
 std::string data_name() {return std::string("MNIST");}
+//char *data_name() { char *ret = "MNIST";  return ret;}
 
 // from tiny_cnn
 template<typename T>
@@ -59,24 +60,22 @@ T* reverse_endian(T* p) {
 }
 
 // from tiny_cnn (kinda)
-bool parse_mnist_labels(const std::string& label_file, std::vector<int> *labels) {
-	std::ifstream ifs(label_file.c_str(), std::ios::in | std::ios::binary);
+//bool parse_mnist_labels(const std::string& label_file, std::vector<int> *labels) {
+bool parse_mnist_labels(const char* label_file, std::vector<int> *labels) {
+//	std::ifstream ifs(label_file.c_str(), std::ios::in | std::ios::binary);
+    open_file(label_file);
+   
+    int magic_number, num_items;
 
-	if (ifs.bad() || ifs.fail()) 
-	{
-		return false;
-	}
-	int magic_number, num_items;
-
-	ifs.read((char*) &magic_number, 4);
-	ifs.read((char*) &num_items, 4);
-
+	read_file((char*) &magic_number, 4);
+	read_file((char*) &num_items, 4);
+	
 	reverse_endian(&magic_number);
 	reverse_endian(&num_items);
-
+	
 	for (size_t i = 0; i < num_items; i++) {
 		unsigned char label;
-		ifs.read((char*) &label, 1);
+		read_file((char*) &label, 1);
 		labels->push_back((int) label);
 	}
 	return true;
@@ -91,41 +90,36 @@ struct mnist_header {
 };
 
 // from tiny_cnn (kinda)
-bool parse_mnist_images(const std::string& image_file, 
+bool parse_mnist_images(const char * image_file, 
 	std::vector<std::vector<float>> *images,
 	float scale_min = -1.0, float scale_max = 1.0,
 	int x_padding = 0, int y_padding = 0) 
 {
-	std::ifstream ifs(image_file.c_str(), std::ios::in | std::ios::binary);
-
-	if (ifs.bad() || ifs.fail())
-	{
-			return false;
-	}
+	open_file(image_file);
+	
 	mnist_header header;
 
 	// read header
-	ifs.read((char*) &header.magic_number, 4);
-	ifs.read((char*) &header.num_items, 4);
-	ifs.read((char*) &header.num_rows, 4);
-	ifs.read((char*) &header.num_cols, 4);
+	read_file((char*) &header.magic_number, 4);
+	read_file((char*) &header.num_items, 4);
+	read_file((char*) &header.num_rows, 4);
+	read_file((char*) &header.num_cols, 4);
 
 	reverse_endian(&header.magic_number);
 	reverse_endian(&header.num_items);
 	reverse_endian(&header.num_rows);
 	reverse_endian(&header.num_cols);
 
-		
 	const int width = header.num_cols + 2 * x_padding;
 	const int height = header.num_rows + 2 * y_padding;
-
+	
 	// read each image
 	for (size_t i = 0; i < header.num_items; i++) 
 	{
 		std::vector<float> image;
 		std::vector<unsigned char> image_vec(header.num_rows * header.num_cols);
 
-		ifs.read((char*) &image_vec[0], header.num_rows * header.num_cols);
+		read_file((char*) &image_vec[0], header.num_rows * header.num_cols);
 		image.resize(width * height, scale_min);
 	
 		for (size_t y = 0; y < header.num_rows; y++)
@@ -137,28 +131,42 @@ bool parse_mnist_images(const std::string& image_file,
 		
 		images->push_back(image);
 	}
+
 	return true;
 }
 
 // == load data (MNIST-28x28x1 size, no padding, pixel range -1 to 1)
-bool parse_test_data(std::string &data_path, std::vector<std::vector<float>> &test_images, std::vector<int> &test_labels, 
+bool parse_test_data(char *data_path, std::vector<std::vector<float>> &test_images, std::vector<int> &test_labels, 
 	float min_val=-1.f, float max_val=1.f, int padx=0, int pady=0)
 {
-	if(!parse_mnist_images(data_path+"/t10k-images.idx3-ubyte", &test_images, min_val, max_val, padx, pady)) 
-		if (!parse_mnist_images(data_path + "/t10k-images-idx3-ubyte", &test_images, min_val, max_val, padx, pady))
+    char *d1, *d2, *d3, *d4; 
+    d1 = strncat(d1, data_path, strlen(data_path)); d1 = strncat(d1, "/t10k-images.idx3-ubyte", strlen("/t10k-images.idx3-ubyte"));
+    d2= strncat(d2, data_path, strlen(data_path)); d2 = strncat(d2, "/t10k-images-idx3-ubyte", strlen("/t10k-images-idx3-ubyte"));
+    d3 = strncat(d3, data_path, strlen(data_path)); d3 = strncat(d1, "/t10k-labels.idx1-ubyte", strlen("/t10k-labels.idx1-ubyte"));
+    d4 = strncat(d4, data_path, strlen(data_path)); d4 = strncat(d1, "/t10k-labels-idx1-ubyte", strlen("/t10k-labels-idx1-ubyte"));
+    
+	if(!parse_mnist_images(d1, &test_images, min_val, max_val, padx, pady)) 
+		if (!parse_mnist_images(d2, &test_images, min_val, max_val, padx, pady))
 			return false;
-	if(!parse_mnist_labels(data_path+"/t10k-labels.idx1-ubyte", &test_labels)) 
-		if (!parse_mnist_labels(data_path + "/t10k-labels-idx1-ubyte", &test_labels)) return false;
+	if(!parse_mnist_labels(d3, &test_labels)) 
+		if (!parse_mnist_labels(d4, &test_labels)) return false;
 	return true;
 }
-bool parse_train_data(std::string &data_path, std::vector<std::vector<float>> &train_images, std::vector<int> &train_labels, 
+
+bool parse_train_data(char *data_path, std::vector<std::vector<float>> &train_images, std::vector<int> &train_labels, 
 	float min_val=-1.f, float max_val=1.f, int padx=0, int pady=0)
 {
-	if(!parse_mnist_images(data_path+"/train-images.idx3-ubyte", &train_images, min_val, max_val, padx, pady))
-		if (!parse_mnist_images(data_path + "/train-images-idx3-ubyte", &train_images, min_val, max_val, padx, pady))
+    char *d1, *d2, *d3, *d4; 
+    d1 = strncat(d1, data_path, strlen(data_path)); d1 = strncat(d1, "/train-images.idx3-ubyte", strlen("/train-images.idx3-ubyte"));
+    d2= strncat(d2, data_path, strlen(data_path)); d2 = strncat(d2, "/train-images-idx3-ubyte", strlen("/train-images-idx3-ubyte"));
+    d3 = strncat(d3, data_path, strlen(data_path)); d3 = strncat(d1, "/train-labels.idx1-ubyte", strlen("/train-labels.idx1-ubyte"));
+    d4 = strncat(d4, data_path, strlen(data_path)); d4 = strncat(d1, "/train-labels-idx1-ubyte", strlen("/train-labels-idx1-ubyte"));
+    
+	if(!parse_mnist_images(d1, &train_images, min_val, max_val, padx, pady))
+		if (!parse_mnist_images(d2, &train_images, min_val, max_val, padx, pady))
 			return false;
-	if(!parse_mnist_labels(data_path+"/train-labels.idx1-ubyte", &train_labels))
-		if (!parse_mnist_labels(data_path + "/train-labels-idx1-ubyte", &train_labels)) return false;
+	if(!parse_mnist_labels(d3, &train_labels))
+		if (!parse_mnist_labels(d4, &train_labels)) return false;
 	return true;
 }
 }

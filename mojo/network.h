@@ -517,6 +517,8 @@ public:
 	int predict_class(const float *in, int _thread_number = -1)
 	{
 		const float* out = forward(in, _thread_number);
+//		for(int i = 0; i < out_size(); i++)
+//		    printf("%d: %f\n", i, out[i]);
 		return arg_max(out, out_size());
 	}
 
@@ -795,7 +797,10 @@ public:
 				if (W[j])
 				{
 					ifs.read((char*)W[j]->x, W[j]->size()*sizeof(float));
-				}
+					
+				//	for(int i = 0; i < W[j]->size(); i++)
+				//        printf("W[j]->x[%d] = %f\n", i, W[j]->x[i]);
+				}		
 			}
 		}
 		else if(binary==0)// text version

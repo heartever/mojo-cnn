@@ -31,14 +31,16 @@
 
 #include <math.h>
 #include <string.h>
+#include <string>
 #include <cstdlib>
 #include <random>
 #include <algorithm> 
 #include <immintrin.h>
-
 #include <vector>
-#include <sgx_trts.h> // sgx_read_rand
 
+# include "../ziggurat_rand_gen/ziggurat.h"
+
+void printf(const char *fmt, ...);
 namespace mojo
 {
 
@@ -406,7 +408,7 @@ class matrix
 	// avx mem aligment
 	float *new_x(const int size) { _x_mem = new float[size + 8 + 7];  x = (float *)(((uintptr_t)_x_mem + 32) & ~(uintptr_t)0x1F); return x; }
 public:
-//	char _name[100];
+	std::string _name;
 	int cols, rows, chans;
 	int chan_stride;
 	int chan_aligned;
@@ -644,23 +646,66 @@ public:
 	}
 	void fill_random_uniform(float range)
 	{
-//		std::mt19937 gen(0);
-//		std::uniform_real_distribution<float> dst(-range, range);
-//		for (int i = 0; i<_size; i++) x[i] = dst(gen);
-       // sgx_read_rand((unsigned char *)x, sizeof(float)*_size);
-       // for (int i = 0; i<_size; i++) x[i] = (x[i] + 0.0)*range/( (1ULL<<(sizeof(float))) + 0.0);
+        int i;
+        int j;
+        uint32_t seed;
+        
+        float value;
+        sgx_read_rand((unsigned char *)&seed, sizeof(uint32_t));
+        
+        for (i = 0; i < _size; i++) 
+        {
+            x[i] = range*r4_uni ( &seed );
+        }
+        /*unsigned char randnum[_size];
+        sgx_read_rand(randnum, _size);
+ //       sgx_read_rand((unsigned char *)x, sizeof(float)*_size);
+        for (int i = 0; i<_size; i++) 
+        {
+            x[i] = (randnum[i] + 0.0)*range/(256.0);
+            
+       //     printf("range: %f, x[i]: %f\n", range, x[i]);
+        }*/
         
 	}
+	
 	void fill_random_normal(float std)
 	{
-	    unsigned char tmp[_size*10]; // 10 uniform -> normal
-	  /*  sgx_read_rand(tmp, _size*10);
+        float fn[128];
+        uint32_t kn[128];
+        int sample;
+        uint32_t seed;
+        float value;
+        float wn[129];
+        
+        r4_nor_setup ( kn, fn, wn );
+
+        seed = 0;
+        sgx_read_rand((unsigned char *)&seed, sizeof(uint32_t));
+
+        for (int i = 0; i < _size; i++) 
+        {
+            x[i] = std*r4_nor(&seed, kn, fn, wn);
+        }
+  
+  
+  
+	   /* const int numberoftrials = 50;
+	    unsigned char tmp[_size*numberoftrials] = {0}; // 10 uniform -> normal
+	    sgx_read_rand(tmp, _size*numberoftrials);
 	    
 	    for(int i = 0; i<_size; i++) 
 	    {
-	        float sum = tmp[i*10] + tmp[i*10+1] + tmp[i*10+2] + tmp[i*10+3] + tmp[i*10+4] + tmp[i*10+5] + tmp[i*10+6] + tmp[i*10+7] + tmp[i*10+8] + tmp[i*10+9];
-	        x[i] = (sum - 1275)/255.0;
+	        //float sum = tmp[i*10] + tmp[i*10+1] + tmp[i*10+2] + tmp[i*10+3] + tmp[i*10+4] + tmp[i*10+5] + tmp[i*10+6] + tmp[i*10+7] + tmp[i*10+8] + tmp[i*10+9] + 0.0;
+	        float sum = 0.0;
+	        for(int j = 0; j < numberoftrials; j++)
+	            sum += tmp[j+numberoftrials*i];
+	            
+	        x[i] = (sum - 127.5*numberoftrials)/255.0/(numberoftrials+0.0)*std*3.464101615;  //sqrt(12)
+	        
+	    //    printf("std: %f, x[i]: %f\n", std, x[i]);
 	    }*/
+	   
 //		std::mt19937 gen(0);
 //		std::normal_distribution<float> dst(0, std);
 //		for (int i = 0; i<_size; i++) x[i] = dst(gen);

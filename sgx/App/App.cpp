@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 	if (ret != SGX_SUCCESS)
 		return -1;
 	// Initializing the enclave finished.	
-	
+	generate_random_number(eid);
 	sgx_destroy_enclave(eid);
 }
 

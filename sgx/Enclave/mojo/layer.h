@@ -29,16 +29,12 @@
 
 #pragma once
 
-#include <string.h>
-//#include <sstream>
-#include <stdio.h>
-#include <stdlib.h>
+#include <string>
+#include <sstream>
+#include <map>
 
 #include "core_math.h"
 #include "activation.h"
-
-#include <map>
-#include <queue> // instead of vector
 
 #include "mojo.h"
 #include <sgx_trts.h> // sgx_read_rand
@@ -68,6 +64,8 @@ namespace mojo
 	}
 	*/
 
+//#define int2str(a) std::to_string((long long)a)
+//#define float2str(a) std::to_string((long double)a)
 #define bail(txt) { printf("ERROR : %s @ file: %s %d: line: function %s\n", txt, __FILE__, __LINE__, __FUNCTION__); throw;}
 
 
@@ -95,15 +93,12 @@ public:
 	matrix node;
 	matrix bias; // this is something that maybe should be in the same class as the weights... but whatever. handled differently for different layers
 	
-	//std::string name;
-	char name[100];
-	
-	
+	std::string name;
 	// index of W matrix, index of connected layer
-	std::queue<std::pair<int,base_layer*>> forward_linked_layers;
+	std::vector<std::pair<int,base_layer*>> forward_linked_layers;
 #ifndef MOJO_NO_TRAINING
 	matrix delta;
-	std::queue<std::pair<int,base_layer*>> backward_linked_layers;
+	std::vector<std::pair<int,base_layer*>> backward_linked_layers;
 
 	virtual void distribute_delta(base_layer &top, const matrix &w, const int train = 1) =0;
 	virtual void calculate_dw(const base_layer &top_layer, matrix &dw, const int train =1)=0;
@@ -112,12 +107,11 @@ public:
 #endif
 	virtual void accumulate_signal(const base_layer &top_node, const matrix &w, const int train =0) =0;
 
-	base_layer(const char* layer_name, int _w, int _h=1, int _c=1) : node(_w, _h, _c),  p_act(NULL), _has_weights(true), pad_cols(0), pad_rows(0), _learning_factor(1.f), _use_bias(false), _thread_count(1)
+	base_layer(const char* layer_name, int _w, int _h=1, int _c=1) : node(_w, _h, _c),  p_act(NULL), name(layer_name), _has_weights(true), pad_cols(0), pad_rows(0), _learning_factor(1.f), _use_bias(false), _thread_count(1)
 		#ifndef MOJO_NO_TRAINING
 		,delta(_w,_h,_c,NULL,false)
 		#endif
 	{
-	    //strncpy(name, layer_name, strlen(layer_name));; // remove const
 	}
 
 	virtual void resize(int _w, int _h=1, int _c=1)
@@ -151,9 +145,9 @@ public:
 	}
 	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
-		top.forward_linked_layers.push(std::make_pair((int)weight_mat_index,this));
+		top.forward_linked_layers.push_back(std::make_pair((int)weight_mat_index,this));
 		#ifndef MOJO_NO_TRAINING
-		backward_linked_layers.push(std::make_pair((int)weight_mat_index,&top));
+		backward_linked_layers.push_back(std::make_pair((int)weight_mat_index,&top));
 		#endif
 		if (_has_weights)
 		{
@@ -167,7 +161,7 @@ public:
 
 	//inline float f(float *in, int i, int size, float bias) {return p_act->f(in, i, size, bias);};
 	inline float df(float *in, int i, int size) { if (p_act) return p_act->df(in, i, size); else return 1.f; };
-	virtual char *get_config_string() = 0;	
+	virtual std::string get_config_string() =0;	
 };
 
 //----------------------------------------------------------------------------------------------------------
@@ -177,22 +171,23 @@ public:
 class input_layer : public base_layer
 {
 public:
-	input_layer(const char *layer_name, int _w, int _h=1, int _c=1) : base_layer(layer_name,_w,_h,_c)
-    {
-        p_act=new_activation_function("identity");
-    }
+	input_layer(const char *layer_name, int _w, int _h=1, int _c=1) : base_layer(layer_name,_w,_h,_c) {p_act=new_activation_function("identity"); }
 	virtual  ~input_layer(){}
 	virtual void activate_nodes() { /*node.reset_empty_chans(); */}
 	virtual void distribute_delta(base_layer &top, const matrix &w, const int train =1) {}
 	virtual void calculate_dw(const base_layer &top_layer, matrix &dw, const int train =1) {}
 	virtual void accumulate_signal(const base_layer &top_node, const matrix &w, const int train =0) {}
-	virtual char *get_config_string() 
+	virtual std::string get_config_string() 
 	{
-	    char *cols = int2str(node.cols);
-	    char *rows = int2str(node.rows);
-	    char *chans = int2str(node.chans);
+	    std::string namelayer = "input ";
+	    std::string cols = dtoa(node.cols);
+	    std::string rows = dtoa(node.rows);
+	    std::string chans = dtoa(node.chans);
+	    std::string space = " ";
+	    std::string cl = "\n";
+	    std::string name = p_act->name;
 	    
-	    char *str = new char[strlen(cols)+strlen(rows)+strlen(chans)+6+3+strlen(p_act->name)+1];
+	    /*char *str = new char[strlen(cols)+strlen(rows)+strlen(chans)+6+3+strlen(p_act->name)+1];
 	    char *tmp = str;
 	    strncpy(tmp, "input ", 6); tmp += 6;
 	    strncpy(tmp, cols, strlen(cols)); tmp += strlen(cols);
@@ -202,8 +197,9 @@ public:
 	    strncpy(tmp, chans, strlen(chans)); tmp += strlen(chans);
 	    strncpy(tmp, " ", 1); tmp += 1;
 	    strncpy(tmp, p_act->name, strlen(p_act->name)); tmp += strlen(p_act->name);
-	    strncpy(tmp, "\n", 1); tmp += 1;
+	    strncpy(tmp, "\n", 1); tmp += 1;*/
 	    //std::string str="input "+int2str(node.cols)+" "+int2str(node.rows)+" "+int2str(node.chans)+ " "+p_act->name+"\n"; 
+	    std::string str = namelayer + cols + space + rows + space + chans + space + name + cl;
 	    return str;
 	}
 };
@@ -222,17 +218,22 @@ public:
 		bias.fill(0.);
 
 	}//layer_type=fully_connected_type;}
-	virtual char *get_config_string() 
+	virtual std::string get_config_string() 
 	{
-	    char *nodesize = int2str(node.size());
-	    char *str = new char[strlen("fully_connected ") + strlen(nodesize) + 1 + strlen(p_act->name) + 1];
+	    std::string layername = "fully_connected ";
+	    std::string space = " ";
+	    std::string cl = "\n";
+	    std::string nodesize = dtoa(node.size());
+	    std::string name = p_act->name;
+	    /*char *str = new char[strlen("fully_connected ") + strlen(nodesize) + 1 + strlen(p_act->name) + 1];
 	    char *tmp = str;
 	    strncpy(tmp, "fully_connected ", strlen("fully_connected ")); tmp += strlen("fully_connected ");
 	    strncpy(tmp, nodesize, strlen(nodesize)); tmp += strlen(nodesize);
 	    strncpy(tmp, " ", 1); tmp += 1;
 	    strncpy(tmp, p_act->name, strlen(p_act->name)); tmp += strlen(p_act->name);
-	    strncpy(tmp, "\n", 1); tmp += 1;
+	    strncpy(tmp, "\n", 1); tmp += 1;*/
 	    //std::string str="fully_connected "+int2str(node.size())+ " "+p_act->name+"\n"; 
+	    std::string str = layername + nodesize + space + name + cl;
 	    return str;
 	}
 	virtual void accumulate_signal( const base_layer &top,const matrix &w, const int train =0)
@@ -261,11 +262,10 @@ public:
 						//std::cout << "stuff" << top.name << " " << name << " " << top.node.x[top.node.chan_stride*i] << " " << w.x[j*w.cols+ts2*i] << " | " ;
 						for (int k=0; k<top.node.size(); k++)
 						{
-							printf("%d, %d,", k, top.node.x[k]);
 							//std::cout << k<< ","<< top.node.x[k] <<",";
+							printf("%d, %d,", k, top.node.x[k]);
 						}
 						
-						printf("Error in file layer.h (ww31).\n");
 						return;
 						//exit(1);
 					}
@@ -369,19 +369,23 @@ public:
 		_has_weights = false;
 	}
 	virtual  ~max_pooling_layer(){}
-	virtual char* get_config_string() 
+	virtual std::string get_config_string() 
 	{
-	    char *poolsize = int2str(_pool_size);
-	    char *stride = int2str(_stride);
+	    std::string poolsize = dtoa(_pool_size);
+	    std::string stride = dtoa(_stride);
+	    std::string namelayer = "max_pool ";
+	    std::string space = " ";
+	    std::string cl = "\n";
+	    std::string str = namelayer + poolsize + space + stride + cl;
 	    
-	    char *str = new char[strlen("max_pool ") + strlen(poolsize) + 1 + strlen(stride) + 1];
+	    /*char *str = new char[strlen("max_pool ") + strlen(poolsize) + 1 + strlen(stride) + 1];
 	    char *tmp = str;
 	    strncpy(tmp, "max_pool ", strlen("max_pool ")); tmp += strlen("max_pool ");
 	    strncpy(tmp, poolsize, strlen(poolsize)); tmp += strlen(poolsize);
 	    strncpy(tmp, " ", 1); tmp += 1;
 	    strncpy(tmp, stride, strlen(stride)); tmp += strlen(stride);
 	    strncpy(tmp, "\n", 1); tmp += 1;
-	   
+	   */
 	    //std::string str="max_pool "+int2str(_pool_size) +" "+ int2str(_stride) +"\n"; 
 	    return str;
 	}
@@ -391,7 +395,7 @@ public:
 	virtual void resize(int _w, int _h=1, int _c=1)
 	{
 		if(_w<1) _w=1; if(_h<1) _h=1; if(_c<1) _c=1;
-		//_max_map.resize(_w*_h*_c);  //removed by ww31
+		_max_map.resize(_w*_h*_c);
 		base_layer::resize(_w, _h, _c);
 	}
 	// no weights 
@@ -421,7 +425,7 @@ public:
 		int kstep = top.node.chan_stride; // top.node.cols*top.node.rows;
 		int jstep=top.node.cols;
 		int output_index=0;
-		//int *p_map = _max_map.data();
+//		int *p_map = _max_map.data();
 		int pool_y=_pool_size; if(top.node.rows==1) pool_y=1; //-top.pad_rows*2==1) pool_y=1;
 		int pool_x=_pool_size; if(top.node.cols==1) pool_x=1;//-top.pad_cols*2==1) pool_x=1;
 		const float *top_node = top.node.x;
@@ -516,7 +520,7 @@ public:
 	// this is upsampling
 	virtual void distribute_delta(base_layer &top, const matrix &w, const int train =1)
 	{
-		//int *p_map = _max_map.data();
+	//	int *p_map = _max_map.data();
 		const int s = (int)_max_map.size();
 		for(int k=0; k<s; k++) top.delta.x[_max_map[k]]+=delta.x[k];
 	}
@@ -533,18 +537,22 @@ public:
 	
 	semi_stochastic_pooling_layer(const char *layer_name, int pool_size, int stride) : max_pooling_layer(layer_name, pool_size, stride){}
 
-	virtual char *get_config_string() 
-	{
-	    char *poolsize = int2str(_pool_size);
-	    char *stride = int2str(_stride);
+	virtual std::string get_config_string() 
+	{ 
+	    std::string poolsize = dtoa(_pool_size);
+	    std::string stride = dtoa(_stride);
+	    std::string namelayer = "semi_stochastic_pool ";
+	    std::string space = " ";
+	    std::string cl = "\n";
+	    std::string str = namelayer + poolsize + space + stride + cl;
 	    
-	    char *str = new char[strlen("semi_stochastic_pool ") + strlen(poolsize) + 1 + strlen(stride) + 1];
+	    /*char *str = new char[strlen("semi_stochastic_pool ") + strlen(poolsize) + 1 + strlen(stride) + 1];
 	    char *tmp = str;
 	    strncpy(tmp, "semi_stochastic_pool ", strlen("semi_stochastic_pool ")); tmp += strlen("semi_stochastic_pool ");
 	    strncpy(tmp, poolsize, strlen(poolsize)); tmp += strlen(poolsize);
 	    strncpy(tmp, " ", 1); tmp += 1;
 	    strncpy(tmp, stride, strlen(stride)); tmp += strlen(stride);
-	    strncpy(tmp, "\n", 1); tmp += 1;
+	    strncpy(tmp, "\n", 1); tmp += 1;*/
 	     
 	    //std::string str = "semi_stochastic_pool " + int2str(_pool_size) + " " + int2str(_stride) + "\n"; 
 	    return str; 
@@ -597,7 +605,6 @@ public:
 	//				else node.empty_chan[k] = 0;
 
 					//int r = rand() % 100;
-	
 					int r;
 				    sgx_read_rand((unsigned char *)&r, sizeof(int));
 				    r = r % 100;
@@ -647,15 +654,19 @@ public:
 		p_act = NULL;// new_activation_function("identity");
 	}
 	virtual  ~dropout_layer() {}
-	virtual char *get_config_string() 
+	virtual std::string get_config_string() 
 	{ 
-	    char *dropoutrate = float2str(_dropout_rate);
+	    std::string namelayer = "dropout ";
+	    std::string cl = "\n";
+	    std::string dropoutrate = float2str(_dropout_rate);
 	    
-	    char *str = new char[strlen("dropout ") + strlen(dropoutrate) + 1];
+	    std::string str = namelayer + dropoutrate + cl;
+	    
+	    /*char *str = new char[strlen("dropout ") + strlen(dropoutrate) + 1];
 	    char *tmp = str;
 	    strncpy(tmp, "dropout ", strlen("dropout ")); tmp += strlen("dropout ");
 	    strncpy(tmp, dropoutrate, strlen(dropoutrate)); tmp += strlen(dropoutrate);
-	    strncpy(tmp, "\n", 1); tmp += 1;
+	    strncpy(tmp, "\n", 1); tmp += 1;*/
 	    
 	    //std::string str = "dropout " + float2str(_dropout_rate)+"\n"; 
 	    return str; 
@@ -692,8 +703,7 @@ public:
 			int k;
 			for (k = 0; k < size; k+=4) // do 4 at a time
 			{
-			//	int r = rand();
-			    int r;
+				int r;
 				sgx_read_rand((unsigned char *)&r, sizeof(int));
 				
 				if ((r % 100) <= (_dropout_rate*100.f)) { pmask->x[k] = 0.0;  node.x[k] *= 0.5f; };
@@ -704,9 +714,9 @@ public:
 			int k2 = k - 4;
 			for (k = k2; k < size; k++)
 			{
-				//int r = rand();
 				int r;
 				sgx_read_rand((unsigned char *)&r, sizeof(int));
+				
 				if ((r % 100) <= (_dropout_rate*100.f)) { pmask->x[k] = 0.0;  node.x[k] *= 0.5f; };
 			}
 		}
@@ -739,15 +749,19 @@ public:
 		_has_weights = false;
 	}
 	virtual  ~maxout_layer() {}
-	virtual char *get_config_string() 
+	virtual std::string get_config_string()
 	{ 
-	    char *pool = int2str(_pool);
+	    std::string namelayer = "mfm ";
+	    std::string pool = dtoa(_pool);
+	    std::string cl = "\n";
 	    
-	    char *str = new char[strlen("mfm ") + strlen(pool) + 1];
+	    std::string str = namelayer + pool + cl;
+	    
+	    /*char *str = new char[strlen("mfm ") + strlen(pool) + 1];
 	    char *tmp = str;
 	    strncpy(tmp, "mfm ", strlen("mfm ")); tmp += strlen("mfm ");
 	    strncpy(tmp, pool, strlen(pool)); tmp += strlen(pool);
-	    strncpy(tmp, "\n", 1); tmp += 1;
+	    strncpy(tmp, "\n", 1); tmp += 1;*/
 	    
 	    //std::string str = "mfm " + int2str(_pool) + "\n"; 
 	    return str; 
@@ -772,12 +786,12 @@ public:
 	{
 		// wasteful to add weight matrix (1x1x1), but makes other parts of code more OO
 		// bad will happen if try to put more than one pool layer
-		top.forward_linked_layers.push(std::make_pair(weight_mat_index, this));
+		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index, this));
 		int w = (top.node.cols) / 1;
 		int h = (top.node.rows) / 1;
 		resize(w, h, top.node.chans);
 #ifndef MOJO_NO_TRAINING
-		backward_linked_layers.push(std::make_pair(weight_mat_index, &top));
+		backward_linked_layers.push_back(std::make_pair(weight_mat_index, &top));
 #endif
 		return NULL;
 		//return new matrix(1, 1, 1);
@@ -870,45 +884,55 @@ public:
 	virtual  ~convolution_layer() {
 	}
 
-	virtual char *get_config_string() 
+	virtual std::string get_config_string() 
 	{
-	    char *kernelcols = int2str(kernel_cols);
-	    char *maps = int2str(maps); 
-	    char *stride = int2str(_stride);
-	    char *group;
-	    if(groups != 1) group = int2str(groups);
+	    std::string kernelcols = dtoa(kernel_cols);
+	    std::string mapsstr = dtoa(maps); 
+	    std::string stride = dtoa(_stride);
+	    std::string space = " ";
+	    std::string cl = "\n";
+	    std::string group;
+	    
+	    std::string name = p_act->name;
+	    if(groups != 1) group = dtoa(groups);
 	    
 	    if(groups==1) 
 	    {
-	        char *str = new char[strlen("convolution ") + strlen(kernelcols) + strlen(maps) + strlen(stride) + 4];
+	        /*char *str = new char[strlen("convolution ") + strlen(kernelcols) + strlen(mapsstr) + strlen(stride) + 4];
 	        char *tmp = str;
 	        strncpy(tmp, "convolution ", strlen("convolution ")); tmp += strlen("convolution ");
 	        strncpy(tmp, kernelcols, strlen(kernelcols)); tmp += strlen(kernelcols);
 	        strncpy(tmp, " ", 1); tmp += 1;
-	        strncpy(tmp, maps, strlen(maps)); tmp += strlen(maps);
+	        strncpy(tmp, mapsstr, strlen(mapsstr)); tmp += strlen(mapsstr);
 	        strncpy(tmp, " ", 1); tmp += 1;
 	        strncpy(tmp, stride, strlen(stride)); tmp += strlen(stride);
 	        strncpy(tmp, " ", 1); tmp += 1;
 	        strncpy(tmp, p_act->name, strlen(p_act->name)); tmp += strlen(p_act->name);
-	        strncpy(tmp, "\n", 1); tmp += 1;
+	        strncpy(tmp, "\n", 1); tmp += 1;*/
+	        std::string namelayer = "convolution ";
+	        std::string str = namelayer + kernelcols + space + mapsstr + space + stride + space + name + cl;
 	    
 	    //    std::string str="convolution "+int2str(kernel_cols)+" "+int2str(maps)+" " + int2str(_stride) + " " +p_act->name+"\n"; 
 	        return str;
 	    }else
 	    {
-	        char *str = new char[strlen("group_convolution ") + strlen(kernelcols) + strlen(maps) + strlen(stride) + strlen(group) + 5];
+	        /*char *str = new char[strlen("group_convolution ") + strlen(kernelcols) + strlen(mapsstr) + strlen(stride) + strlen(group) + 5];
 	        char *tmp = str;
 	        strncpy(tmp, "group_convolution ", strlen("group_convolution ")); tmp += strlen("group_convolution ");
 	        strncpy(tmp, kernelcols, strlen(kernelcols)); tmp += strlen(kernelcols);
 	        strncpy(tmp, " ", 1); tmp += 1;
-	        strncpy(tmp, maps, strlen(maps)); tmp += strlen(maps);
+	        strncpy(tmp, mapsstr, strlen(mapsstr)); tmp += strlen(mapsstr);
 	        strncpy(tmp, " ", 1); tmp += 1;
 	        strncpy(tmp, stride, strlen(stride)); tmp += strlen(stride);
 	        strncpy(tmp, " ", 1); tmp += 1;
 	        strncpy(tmp, group, strlen(group)); tmp += strlen(group);
 	        strncpy(tmp, " ", 1); tmp += 1;
 	        strncpy(tmp, p_act->name, strlen(p_act->name)); tmp += strlen(p_act->name);
-	        strncpy(tmp, "\n", 1); tmp += 1;
+	        strncpy(tmp, "\n", 1); tmp += 1;*/
+	        std::string namelayer = "group_convolution ";
+	        
+	        std::string str = namelayer + kernelcols + space + mapsstr + space + stride + space + group + space + name + cl;
+	    
 	    
 	    //  std::string str="group_convolution "+int2str(kernel_cols)+" "+int2str(maps)+" " + int2str(_stride)+" " + int2str(groups) + " " +p_act->name+"\n"; 
 	        return str;
@@ -934,9 +958,9 @@ public:
 	// this connection work won't work with multiple top layers (yet)
 	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
-		top.forward_linked_layers.push(std::make_pair(weight_mat_index,this));
+		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index,this));
 		#ifndef MOJO_NO_TRAINING
-		backward_linked_layers.push(std::make_pair(weight_mat_index,&top));
+		backward_linked_layers.push_back(std::make_pair(weight_mat_index,&top));
 		#endif
 		// re-shuffle these things so weights of size kernel w,h,kerns - node of size see below
 		//int total_kernels=top.node.chans*node.chans;
@@ -1547,9 +1571,9 @@ public:
 		_use_bias = true;
 	}
 	virtual  ~deepcnet_layer() {}
-	virtual char* get_config_string() 
+	virtual std::string get_config_string() 
 	{ 
-	    char *map = int2str(maps);
+	   /* char *map = dtoa(maps);
 	    
 	    char *str = new char[strlen("deepcnet ") + strlen(map) + strlen(p_act->name) + 2];
 	    char *tmp = str;
@@ -1557,10 +1581,15 @@ public:
 	    strncpy(tmp, map, strlen(map)); tmp += strlen(map);
 	    strncpy(tmp, " ", 1); tmp += 1;
 	    strncpy(tmp, p_act->name, strlen(p_act->name)); tmp += strlen(p_act->name);
-	    strncpy(tmp, "\n", 1); tmp += 1;
+	    strncpy(tmp, "\n", 1); tmp += 1;*/
+	    std::string map = dtoa(maps);
+	    std::string deepcnet = "deepcnet ";
+	    std::string space = " ";
+	    std::string cl = "\n";
+	    std::string name = p_act->name;
 	    
-	   // std::string str = "deepcnet " + int2str(maps) + " " + p_act->name + "\n"; 
-	    return str; 
+	    std::string str = deepcnet + map + space + name + cl; 
+	    return str;  
 	}
 
 	virtual int fan_size() { return kernel_rows*kernel_cols*maps *kernels_per_map; }
@@ -1582,9 +1611,9 @@ public:
 	// this connection work won't work with multiple top layers (yet)
 	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
-		top.forward_linked_layers.push(std::make_pair(weight_mat_index, this));
+		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index, this));
 #ifndef MOJO_NO_TRAINING
-		backward_linked_layers.push(std::make_pair(weight_mat_index, &top));
+		backward_linked_layers.push_back(std::make_pair(weight_mat_index, &top));
 #endif
 		// re-shuffle these things so weights of size kernel w,h,kerns - node of size see below
 		//int total_kernels=top.node.chans*node.chans;
@@ -1637,18 +1666,18 @@ public:
 
 //			MOJO_THREAD_THIS_LOOP_DYNAMIC(_thread_count)
 MOJO_THREAD_THIS_LOOP(_thread_count)
-			for (int mapi = 0; mapi < map_cnt; mapi+=1) // how many maps  maps= node.chans
+			for (int map = 0; map < map_cnt; map+=1) // how many maps  maps= node.chans
 			{
 				//std::cout << omp_get_thread_num();
-				float *out = imgsum_ptr.x  + imgsum_ptr.chan_stride*mapi;
-				dotsum_unwrapped_2x2(img_ptr.x, &w.x[(mapi + k*maps)*kernel_size], out, (jstep-1)*(jstep-1));
+				float *out = imgsum_ptr.x  + imgsum_ptr.chan_stride*map;
+				dotsum_unwrapped_2x2(img_ptr.x, &w.x[(map + k*maps)*kernel_size], out, (jstep-1)*(jstep-1));
 			}
 		}
 		int idx = 0;
-		for (int mapi = 0; mapi < map_cnt; mapi++) // how many maps  maps= node.chans
+		for (int map = 0; map < map_cnt; map++) // how many maps  maps= node.chans
 		{
-			float *out = node.x + pool_map_stride*mapi;
-			float *sum = imgsum_ptr.x + imgsum_ptr.chan_stride*mapi;
+			float *out = node.x + pool_map_stride*map;
+			float *sum = imgsum_ptr.x + imgsum_ptr.chan_stride*map;
 			int cnt=0;
 			for (int j = 0; j < conv_size; j += _pool)
 			{
@@ -1664,7 +1693,7 @@ MOJO_THREAD_THIS_LOOP(_thread_count)
 						
 					//const int pool_idx = (i + j * pool_size) / _pool;
 					out[cnt] = sum[maxi];
-					_max_map[idx] = maxi+ conv_size*conv_size*mapi;
+					_max_map[idx] = maxi+ conv_size*conv_size*map;
 					idx++;
 					cnt++;
 				}
@@ -1701,7 +1730,6 @@ MOJO_THREAD_THIS_LOOP(_thread_count)
 		const int s = (int)_max_map.size();
 
 		// put the maxpool result
-		//for (int k = 0; k<s; k++) conv_delta.x[p_map[k]] += delta.x[k];
 		for (int k = 0; k<s; k++) conv_delta.x[_max_map[k]] += delta.x[k];
 
 //		std::cout << "deepc max";
@@ -1814,9 +1842,9 @@ public:
 		p_act = NULL;// new_activation_function("identity");
 	}
 	virtual  ~concatenation_layer() {}
-	virtual char *get_config_string() 
+	virtual std::string get_config_string() 
 	{ 
-	    char *cols = int2str(node.cols);
+	/*	char *cols = dtoa(node.cols);
 	    char *str;
 	    
 	    if (_pad_type == mojo::edge) str = new char[strlen("concatenate ") + strlen(" edge\n") + strlen(cols)];
@@ -1829,13 +1857,16 @@ public:
 	    
 	    if (_pad_type == mojo::edge) strncpy(tmp, " edge\n", strlen(" edge\n"));
 	    else if(_pad_type == mojo::median_edge) strncpy(tmp, " median_edge\n", strlen(" median_edge\n"));
-	    else strncpy(tmp, " zero\n", strlen(" zero\n"));
+	    else strncpy(tmp, " zero\n", strlen(" zero\n"));*/
 	    
-		//std::string str_p = " zero\n";
-		//if (_pad_type == mojo::edge) str_p = " edge\n";
-		//else if (_pad_type == mojo::median_edge) str_p = " median_edge\n";
+	    std::string conc = "concatenate ";
+	    std::string cols = dtoa(node.cols);
+	    	    
+		std::string str_p = " zero\n";
+		if (_pad_type == mojo::edge) str_p = " edge\n";
+		else if (_pad_type == mojo::median_edge) str_p = " median_edge\n";
 
-		//std::string str = "concatenate " + int2str(node.cols) + str_p;
+		std::string str = conc + cols + str_p;
 		return str; 
 	}
 	// this connection work won't work with multiple top layers (yet)
@@ -1949,19 +1980,26 @@ public:
 		_has_weights = false;
 	}
 	virtual  ~shuffle_layer() {}
-	virtual char *get_config_string() 
-	{
-	    char *group = int2str(groups);
+	virtual std::string get_config_string() 
+	{ 
+	    std::string group = dtoa(groups);
+	    std::string namelayer = "shuffle ";
+	    std::string cl = "\n";
 	    
-	    char *str = new char[strlen("shuffle ") + strlen(group) + 1];
+	    std::string str = namelayer + group + cl;
+	    
+	    /*char *str = new char[strlen("shuffle ") + strlen(group) + 1];
 	    char *tmp = str;
 	    strncpy(tmp, "shuffle ", strlen("shuffle ")); tmp += strlen("shuffle ");
 	    strncpy(tmp, group, strlen(group)); tmp += strlen(group);
 	    
-	    strncpy(tmp, "\n", 1); tmp += 1;
+	    strncpy(tmp, "\n", 1); tmp += 1;*/
 	    
 //	    std::string str = "shuffle " + int2str(groups) + "\n"; 
 	    return str; 
+	    //std:string strgroup(int2str(groups));
+	    //std::string str = "shuffle " + int2str(groups) + "\n"; 
+	    //return str; 
 	}
 	virtual void resize(int _w, int _h = 1, int _c = 1)
 	{
@@ -1983,12 +2021,12 @@ public:
 	{
 		// wasteful to add weight matrix (1x1x1), but makes other parts of code more OO
 		// bad will happen if try to put more than one top layer
-		top.forward_linked_layers.push(std::make_pair(weight_mat_index, this));
+		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index, this));
 		int w = (top.node.cols) / 1;
 		int h = (top.node.rows) / 1;
 		resize(w, h, top.node.chans);
 #ifndef MOJO_NO_TRAINING
-		backward_linked_layers.push(std::make_pair(weight_mat_index, &top));
+		backward_linked_layers.push_back(std::make_pair(weight_mat_index, &top));
 #endif
 		return NULL;
 		//return new matrix(1, 1, 1);
@@ -2037,7 +2075,6 @@ public:
 	}
 #endif
 };
-
 
 //--------------------------------------------------
 // N E W    L A Y E R 
@@ -2258,5 +2295,6 @@ base_layer *new_layer(const char *layer_name, const char *config)
 */
 	return NULL;
 }
+
 
 } // namespace
