@@ -43,7 +43,7 @@
 
 #include <mojo.h>
 
-/*
+//*
 #include "mnist_parser.h"
 using namespace mnist;
 std::string data_path="../data/mnist/";

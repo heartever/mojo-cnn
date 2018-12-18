@@ -4,7 +4,7 @@ enclave {
     trusted {
         /* define ECALLs here. */
         public int generate_random_number(void);
-        public void new_network();
+        public void new_network([in, string] const char* str);
         
         public int cnn_outsize();
         public int classification([in, count = cnt]float *testimage, int cnt);

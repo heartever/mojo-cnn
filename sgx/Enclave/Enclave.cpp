@@ -41,14 +41,14 @@ int generate_random_number() {
 
 mojo::network cnn;
 //std::string model_file="../models/mnist_deepcnet.mojo";
-std::string model_file="../models/cifar_deepcnet.mojo";
+//std::string model_file="../models/cifar_deepcnet.mojo";
 
-void new_network()
+void new_network(const char *model_file)
 {
 //    printf(">> ecall new_network\n");
     cnn.enable_external_threads(); 
 //    printf(">> ecall enable_external_threads succeed.\n");
-    if(!cnn.read((char *)model_file.c_str())) 
+    if(!cnn.read((char *)model_file)) 
     {
         printf("error: could not read model.\n");
     }

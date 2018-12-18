@@ -48,7 +48,7 @@
 
 #include <unistd.h>
 
-/*
+//*
 #include "mnist_parser.h"
 using namespace mnist;
 std::string data_path="../data/mnist/";
@@ -212,7 +212,7 @@ int main()
 	// == setup the network  
 //	mojo::network cnn;
     
-    new_network(eid);
+    new_network(eid, model_file.c_str());
 	// here we need to prepare mojo cnn to store data from multiple threads
 	// !! enable_external_threads must be set prior to loading or creating a model !!
 //	cnn.enable_external_threads(); 
