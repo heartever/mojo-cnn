@@ -36,7 +36,7 @@
 //#define MOJO_CV3	// use OpenCV 3.x utilities
 //#define MOJO_CV2	// use OpenCV 2.x utilities
 //#define MOJO_PROFILE_LAYERS  // std::cout layer names and latencies
-#define MOJO_INTERNAL_THREADING // try to speed forward pass with internal threading
+//#define MOJO_INTERNAL_THREADING // try to speed forward pass with internal threading
 
 #ifdef MOJO_OMP
 	#include <omp.h>

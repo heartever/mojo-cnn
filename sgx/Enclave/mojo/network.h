@@ -625,7 +625,7 @@ public:
 	bool write(char *filename, bool binary = false, bool final = false) 
 	{
 	    int retocall;
-	    open_networkfile(&retocall, filename);
+	    open_outputnetworkfile(&retocall, filename);
 	    
 	    
 	    // save layers
@@ -705,7 +705,7 @@ public:
 		}
 		//ofs.flush();
 		
-		close_networkfile();
+		close_outputnetworkfile();
 		return true;
 	}
 	

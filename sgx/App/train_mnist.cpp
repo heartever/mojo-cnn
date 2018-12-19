@@ -51,11 +51,12 @@
 #include "mnist_parser.h"
 
 
-const int mini_batch_size = 24;
-const float initial_learning_rate = 0.04f;
+
 std::string solver = "adam";
 std::string data_path="../data/mnist/";
 using namespace mnist;
+
+const int mini_batch_size = 24; // also defined in Enclave.cpp
 
 
 /* Global EID shared by multiple threads */
@@ -92,12 +93,13 @@ void close_file()
     if(f) fclose(f);
 }
 
-
 // deep network file operations follow
 FILE *fnetwork = NULL;
+FILE *output_network_file = NULL;
+
 int open_networkfile(const char* str)
 {
-    fnetwork = fopen(str, "rwb");
+    fnetwork = fopen(str, "rb");
     if(!fnetwork)
     {
         printf("open deep network file error.\n");
@@ -107,9 +109,21 @@ int open_networkfile(const char* str)
     return 0;
 }
 
-// OCall implementations
+int open_outputnetworkfile(const char* str)
+{
+    output_network_file = fopen(str, "wb");
+    if(!output_network_file)
+    {
+        printf("open deep network file error.\n");
+        return 1;
+    }
+    
+    return 0;
+}
+
+// OCall implementations, for open_outputnetworkfile
 void ocall_fprint_networkfile(const char* str) {
-    fprintf(fnetwork, "%s\n", str);
+    fprintf(output_network_file, "%s\n", str);
 }
 
 // OCall implementations
@@ -151,23 +165,35 @@ void close_networkfile()
     if(fnetwork) fclose(fnetwork);
 }
 
+void close_outputnetworkfile()
+{
+    fflush(output_network_file);
+    if(output_network_file) fclose(output_network_file);
+}
+
 
 // performs validation testing
-float test(mojo::network &cnn, const std::vector<std::vector<float>> &test_images, const std::vector<int> &test_labels)
+float test(const std::vector<std::vector<float>> &test_images, const std::vector<int> &test_labels)
 {
 	// use progress object for simple timing and status updating
 	mojo::progress progress((int)test_images.size(), "  testing:\t\t");
 
-	int out_size = cnn.out_size(); // we know this to be 10 for MNIST
+	int out_size;
+	cnn_outsize(eid, &out_size); // we know this to be 10 for MNIST and CIFAR
+	
 	int correct_predictions = 0;
 	const int record_cnt = (int)test_images.size();
 
 //	#pragma omp parallel for reduction(+:correct_predictions) schedule(dynamic)
 	for (int k = 0; k<record_cnt; k++)
 	{
-		const int prediction = cnn.predict_class(test_images[k].data());
+		int prediction = 0;
+		
+	//	printf("test image size: %d\n", test_images[k].size());
+		classification(eid, &prediction, (float *)test_images[k].data(), test_images[k].size()); // input data
+		
 		if (prediction == test_labels[k]) correct_predictions += 1;
-		if (k % 1000 == 0) progress.draw_progress(k);
+		if (k % 100 == 0) progress.draw_progress(k);
 	}
 
 	float accuracy = (float)correct_predictions / record_cnt*100.f;
@@ -177,6 +203,16 @@ float test(mojo::network &cnn, const std::vector<std::vector<float>> &test_image
 
 int main()
 {
+    sgx_status_t        ret = SGX_SUCCESS;
+	sgx_launch_token_t  token = { 0 };
+	int updated = 0;
+
+	ret = sgx_create_enclave("enclave.signed.so", SGX_DEBUG_FLAG, &token, &updated, &eid, NULL);
+	if (ret != SGX_SUCCESS)
+		return -1;
+		
+	printf("Enclave loaded.\n");
+		
 	// ==== parse data
 	// array to hold image data (note that mojo does not require use of std::vector)
 	std::vector<std::vector<float>> test_images;
@@ -189,39 +225,21 @@ int main()
 	if (!parse_train_data(data_path, train_images, train_labels)) { std::cerr << "error: could not parse data.\n"; return 1; }
 
 	// ==== setup the network  - when you train you must specify an optimizer ("sgd", "rmsprop", "adagrad", "adam")
-	mojo::network cnn(solver.c_str());
-	// !! the threading must be enabled with thread count prior to loading or creating a model !!
-	cnn.enable_external_threads();
-	cnn.set_mini_batch_size(mini_batch_size);
-	cnn.set_smart_training(true); // automate training
-	cnn.set_learning_rate(initial_learning_rate);
+
+    new_network(eid, "../models/mnist_quickstart.txt");
+    std::cout << "new_network created.\n";
 	
-	// Note, network descriptions can be read from a text file with similar format to the API
-	cnn.read("../models/mnist_quickstart.txt");
 
-	/*
-	// to construct the model through API calls...
-	cnn.push_back("I1", "input 28 28 1");				// MNIST is 28x28x1
-	cnn.push_back("C1", "convolution 5 8 1 elu");		// 5x5 kernel, 20 maps. stride 1. out size is 28-5+1=24
-	cnn.push_back("P1", "semi_stochastic_pool 3 3");	// pool 3x3 blocks. stride 3. outsize is 8
-	cnn.push_back("C2i", "convolution 1 16 1 elu");		// 1x1 'inceptoin' layer
-	cnn.push_back("C2", "convolution 5 48 1 elu");		// 5x5 kernel, 200 maps.  out size is 8-5+1=4
-	cnn.push_back("P2", "semi_stochastic_pool 2 2");	// pool 2x2 blocks. stride 2. outsize is 2x2
-	cnn.push_back("FC2", "softmax 10");					// 'flatten' of 2x2 input is inferred
-	// connect all the layers. Call connect() manually for all layer connections if you need more exotic networks.
-	cnn.connect_all();
-	// */	
-
-	std::cout << "==  Network Configuration  ====================================================" << std::endl;
-	std::cout << cnn.get_configuration() << std::endl;
+//	std::cout << "==  Network Configuration  ====================================================" << std::endl;
+//	std::cout << cnn.get_configuration() << std::endl;
 
 	// add headers for table of values we want to log out
 	mojo::html_log log;
 	log.set_table_header("epoch\ttest accuracy(%)\testimated accuracy(%)\tepoch time(s)\ttotal time(s)\tlearn rate\tmodel");
-	log.set_note(cnn.get_configuration());
+//	log.set_note(cnn.get_configuration());
 				
 	// augment data random shifts only
-	cnn.set_random_augmentation(1,1,0,0,mojo::edge);
+//	cnn.set_random_augmentation(1,1,0,0,mojo::edge);
 
 	// setup timer/progress for overall training
 	mojo::progress overall_progress(-1, "  overall:\t\t");
@@ -229,26 +247,35 @@ int main()
 	float old_accuracy = 0; 
 	while (1)
 	{
-		overall_progress.draw_header(data_name() + "  Epoch  " + std::to_string((long long)cnn.get_epoch() + 1), true);
+	    int _epoch = 0;
+	    get_epoch(eid, &_epoch);
+		overall_progress.draw_header(data_name() + "  Epoch  " + std::to_string((long long)_epoch + 1), true);
 		// setup timer / progress for this one epoch
 		mojo::progress progress(train_samples, "  training:\t\t");
 		// set loss function
-		cnn.start_epoch("cross_entropy");
+		
+		epoch(eid, "cross_entropy");
+//		cnn.start_epoch("cross_entropy");
 
 		// manually loop through data. batches are handled internally. if data is to be shuffled, the must be performed externally
 //		#pragma omp parallel for schedule(dynamic)  // schedule dynamic to help make progress bar work correctly
 		for (int k = 0; k<train_samples; k++)
 		{
-			cnn.train_class(train_images[k].data(), train_labels[k]);
+			//cnn.train_class(train_images[k].data(), train_labels[k]);
+			train(eid, train_images[k].data(), train_images[k].size(), train_labels[k]);
 			if (k % 1000 == 0) progress.draw_progress(k);
 		}
 		
-		cnn.end_epoch();
+		end_epoch(eid);
+		//cnn.end_epoch();
 		float dt = progress.elapsed_seconds();
+		float estimated_accuracy = 0.0;
+		get_estimated_accuracy(eid, &estimated_accuracy);
+		
 		std::cout << "  mini batch:\t\t" << mini_batch_size << "                               " << std::endl;
-		std::cout << "  training time:\t" << dt << " seconds on " << cnn.get_thread_count() << " threads" << std::endl;
-		std::cout << "  model updates:\t" << cnn.train_updates << " (" << (int)(100.f*(1. - (float)cnn.train_skipped / cnn.train_samples)) << "% of records)" << std::endl;
-		std::cout << "  estimated accuracy:\t" << cnn.estimated_accuracy << "%" << std::endl;
+		std::cout << "  training time:\t" << dt << " seconds."<< std::endl;
+//		std::cout << "  model updates:\t" << cnn.train_updates << " (" << (int)(100.f*(1. - (float)cnn.train_skipped / cnn.train_samples)) << "% of records)" << std::endl;
+		std::cout << "  estimated accuracy:\t" << estimated_accuracy << "%" << std::endl;
 
 
 		/* if you want to run in-sample testing on the training set, include this code
@@ -260,33 +287,36 @@ int main()
 
 		// ==== run testing set
 		progress.reset((int)test_images.size(), "  testing out-of-sample:\t");
-		float accuracy = test(cnn, test_images, test_labels);
+		float accuracy = test(test_images, test_labels);
 		std::cout << "  test accuracy:\t" << accuracy << "% (" << 100.f - accuracy << "% error)      " << std::endl;
 
 		// if accuracy is improving, reset the training logic that may be thinking about quitting
 		if (accuracy > old_accuracy)
 		{
-			cnn.reset_smart_training();
+			reset_smart_training(eid);
 			old_accuracy = accuracy;
 		}
 
 		// save model
-		std::string model_file = "../models/snapshots/tmp_" + std::to_string((long long)cnn.get_epoch()) + ".txt";
-		cnn.write(model_file,true);
+		std::string model_file = "../models/snapshots/tmp_" + std::to_string((long long)_epoch) + ".txt";
+		write_model_file(eid, (char *)model_file.c_str());
+//		cnn.write(model_file,true);
 		std::cout << "  saved model:\t\t" << model_file << std::endl << std::endl;
 
 		// write log file
 		std::string log_out;
 		log_out += float2str(dt) + "\t";
 		log_out += float2str(overall_progress.elapsed_seconds()) + "\t";
-		log_out += float2str(cnn.get_learning_rate()) + "\t";
+//		log_out += float2str(cnn.get_learning_rate()) + "\t";
 		log_out += model_file;
-		log.add_table_row(cnn.estimated_accuracy, accuracy, log_out);
+		log.add_table_row(estimated_accuracy, accuracy, log_out);
 		// will write this every epoch
 		log.write("../models/snapshots/mojo_mnist_log.htm");
 
 		// can't seem to improve
-		if (cnn.elvis_left_the_building())
+		int elvisleft;
+		elvis_left_the_building(eid, &elvisleft);
+		if (elvisleft)
 		{
 			std::cout << "Elvis just left the building. No further improvement in training found.\nStopping.." << std::endl;
 			break;
@@ -294,5 +324,7 @@ int main()
 
 	};
 	std::cout << std::endl;
+	
+	sgx_destroy_enclave(eid);
 	return 0;
 }

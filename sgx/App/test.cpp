@@ -52,7 +52,8 @@
 #include "mnist_parser.h"
 using namespace mnist;
 std::string data_path="../data/mnist/";
-std::string model_file="../models/mnist_deepcnet.mojo";
+//std::string model_file="../models/mnist_deepcnet.mojo";
+std::string model_file="../models/tmp_3.txt";
 
 /*/
 #include "cifar_parser.h"
@@ -95,12 +96,13 @@ void close_file()
     if(f) fclose(f);
 }
 
-
 // deep network file operations follow
 FILE *fnetwork = NULL;
+FILE *output_network_file = NULL;
+
 int open_networkfile(const char* str)
 {
-    fnetwork = fopen(str, "rwb");
+    fnetwork = fopen(str, "rb");
     if(!fnetwork)
     {
         printf("open deep network file error.\n");
@@ -110,9 +112,21 @@ int open_networkfile(const char* str)
     return 0;
 }
 
-// OCall implementations
+int open_outputnetworkfile(const char* str)
+{
+    output_network_file = fopen(str, "wb");
+    if(!output_network_file)
+    {
+        printf("open deep network file error.\n");
+        return 1;
+    }
+    
+    return 0;
+}
+
+// OCall implementations, for open_outputnetworkfile
 void ocall_fprint_networkfile(const char* str) {
-    fprintf(fnetwork, "%s\n", str);
+    fprintf(output_network_file, "%s\n", str);
 }
 
 // OCall implementations
@@ -152,6 +166,12 @@ void close_networkfile()
 {
     fflush(fnetwork);
     if(fnetwork) fclose(fnetwork);
+}
+
+void close_outputnetworkfile()
+{
+    fflush(output_network_file);
+    if(output_network_file) fclose(output_network_file);
 }
 
 void test(const std::vector<std::vector<float>> &test_images, const std::vector<int> &test_labels)
