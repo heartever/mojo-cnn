@@ -625,7 +625,7 @@ public:
 	bool write(char *filename, bool binary = false, bool final = false) 
 	{
 	    int retocall;
-	    open_networkfile(&retocall, filename);
+	    open_outputnetworkfile(&retocall, filename);
 	    
 	    
 	    // save layers
@@ -662,15 +662,17 @@ public:
 			
 			for(int j=0; j<(int)layer_sets[MAIN_LAYER_SET].size(); j++)
 				if(layer_sets[MAIN_LAYER_SET][j]->use_bias())
-				    for(int k = 0; k < layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float); k++)
-					    fprint_networkfile("%c", (char*)layer_sets[MAIN_LAYER_SET][j]->bias.x+k);
+				    ocall_write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
+				//    for(int k = 0; k < layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float); k++)
+				//	    fprint_networkfile("%c", (char*)layer_sets[MAIN_LAYER_SET][j]->bias.x+k);
 					//ofs.write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
 			// save weights
 			for (int j = 0; j < (int)W.size(); j++)
 			{
 				if (W[j])
-				    for(int k = 0; k < W[j]->size()*sizeof(float); k++)
-				        fprint_networkfile("%c", (char*)W[j]->x+k);
+				    ocall_write((char*)W[j]->x, W[j]->size()*sizeof(float));
+				//    for(int k = 0; k < W[j]->size()*sizeof(float); k++)
+				//        fprint_networkfile("%c", (char*)W[j]->x+k);
 				//	ofs.write((char*)W[j]->x, W[j]->size()*sizeof(float));
 			}
 		}
@@ -705,7 +707,7 @@ public:
 		}
 		//ofs.flush();
 		
-		close_networkfile();
+		close_outputnetworkfile();
 		return true;
 	}
 	
@@ -768,7 +770,7 @@ public:
 			layer_count = atoi(s.c_str());
 			version = 1;
 			
-			//printf("version = 1, layer_count: %d, line: %s\n", layer_count, s);
+//			printf("version = 1, layer_count: %d, line: %s\n", layer_count, s);
 		}
 		else if (s.find("mojo:") == 0)
 		{
@@ -795,7 +797,7 @@ public:
 		{
 			layer_count = atoi(s.c_str());
 			
-			//printf("layer_count: %d, line: %s\n", layer_count, s);
+//			printf("layer_count: %d, line: %s\n", layer_count, s);
 		}
 		// read layer def
 		std::string layer_name;
@@ -806,7 +808,7 @@ public:
 			layer_def = getcleanline();
 			push_back(layer_name.c_str(), layer_def.c_str());
 			
-			//printf("%s: %s\n", layer_name.c_str(), layer_def.c_str());
+//			printf("%s: %s\n", layer_name.c_str(), layer_def.c_str());
 		}
 
 		// read graph
@@ -845,7 +847,7 @@ public:
 		s=getcleanline(); // get endline
 		binary = atoi(s.c_str());
 		
-		//printf("binary: %d\n", binary);
+		printf("binary: %d\n", binary);
 
 		// binary version to save space if needed
 		if(binary==1)
@@ -878,7 +880,7 @@ public:
 				        
 				    }*/
 				    ocall_read((char*)W[j]->x, W[j]->size()*sizeof(float));
-				//    for(int i = 0; i < W[j]->size(); i++)
+				 //   for(int i = 0; i < W[j]->size(); i++)
 				//        printf("W[j]->x[%d] = %f\n", i, W[j]->x[i]);
 				//	ifs.read((char*)W[j]->x, W[j]->size()*sizeof(float));
 				}

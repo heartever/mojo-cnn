@@ -1,7 +1,13 @@
 #### TODO:
 * Only perform a layer in SGX, instead of the whole network
-* Training
 * Larger networks
+
+
+#### Done
+* Classification
+* Training
+
+#### Future work
 * Multi-threading
 
 -----
