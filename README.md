@@ -2,7 +2,7 @@
 * Only perform a layer in SGX, instead of the whole network
 * Training
 * Larger networks
-* Multi-threading
+* Multi-threading (failed, leaved for future work)
 
 -----
 |<sub>MSVC Win64</sub>|<sub>GCC Linux64</sub>|
