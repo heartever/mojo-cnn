@@ -40,7 +40,7 @@ enclave {
         float ocall_getfloat();
         
         void ocall_read([out, size = sz] char *src, int sz);
-        void ocall_write([out, size = sz] char *src, int sz);
+        void ocall_write([in, size = sz] char *src, int sz);
         
         void end_this_line();
         
