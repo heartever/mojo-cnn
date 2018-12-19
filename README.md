@@ -1,8 +1,14 @@
 #### TODO:
 * Only perform a layer in SGX, instead of the whole network
-* Training
 * Larger networks
-* Multi-threading (failed, left for future work)
+
+
+#### Done
+* Classification
+* Training
+
+#### Future work
+* Multi-threading
 
 -----
 |<sub>MSVC Win64</sub>|<sub>GCC Linux64</sub>|
