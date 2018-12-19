@@ -58,13 +58,6 @@ std::string data_path="../data/mnist/";
 using namespace mnist;
 
 
-/*/
-#include "cifar_parser.h"
-using namespace cifar;
-std::string data_path="../data/cifar-10-batches-bin/";
-std::string model_file="../models/cifar_deepcnet.mojo";
-//*/
-
 /* Global EID shared by multiple threads */
 sgx_enclave_id_t eid = 0;
 
@@ -169,7 +162,7 @@ float test(mojo::network &cnn, const std::vector<std::vector<float>> &test_image
 	int correct_predictions = 0;
 	const int record_cnt = (int)test_images.size();
 
-	#pragma omp parallel for reduction(+:correct_predictions) schedule(dynamic)
+//	#pragma omp parallel for reduction(+:correct_predictions) schedule(dynamic)
 	for (int k = 0; k<record_cnt; k++)
 	{
 		const int prediction = cnn.predict_class(test_images[k].data());
@@ -243,18 +236,12 @@ int main()
 		cnn.start_epoch("cross_entropy");
 
 		// manually loop through data. batches are handled internally. if data is to be shuffled, the must be performed externally
-		#pragma omp parallel for schedule(dynamic)  // schedule dynamic to help make progress bar work correctly
+//		#pragma omp parallel for schedule(dynamic)  // schedule dynamic to help make progress bar work correctly
 		for (int k = 0; k<train_samples; k++)
 		{
 			cnn.train_class(train_images[k].data(), train_labels[k]);
 			if (k % 1000 == 0) progress.draw_progress(k);
 		}
-
-		// draw weights of main convolution layers
-		#ifdef MOJO_CV3
-		mojo::show(mojo::draw_cnn_weights(cnn, "C1",mojo::tensorglow), 2 /* scale x 2 */, "C1 Weights");
-		mojo::show(mojo::draw_cnn_weights(cnn, "C2",mojo::tensorglow), 2, "C2 Weights");
-		#endif
 		
 		cnn.end_epoch();
 		float dt = progress.elapsed_seconds();
