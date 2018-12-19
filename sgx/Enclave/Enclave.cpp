@@ -76,7 +76,7 @@ void new_network(const char *model_file)
 	cnn.set_mini_batch_size(mini_batch_size);
 	cnn.set_smart_training(true); // automate training
 	cnn.set_learning_rate(initial_learning_rate);
-	    printf("model_file: %s\n", model_file);
+	//    printf("model_file: %s\n", model_file);
     if(!cnn.read((char *)model_file)) 
     {
         printf("error: could not read model.\n");

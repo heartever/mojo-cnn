@@ -123,8 +123,14 @@ int open_outputnetworkfile(const char* str)
 
 // OCall implementations, for open_outputnetworkfile
 void ocall_fprint_networkfile(const char* str) {
-    fprintf(output_network_file, "%s\n", str);
+    fprintf(output_network_file, "%s", str);
 }
+
+void ocall_write(char *src, int sz)
+{
+    fwrite(src, 1, sz, fnetwork);
+}
+/////////////
 
 // OCall implementations
 char ocall_fread_networkfile() {
