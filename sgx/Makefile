@@ -81,7 +81,7 @@ App_Cpp_Files := App/test.cpp
  
 App_Include_Paths := -Imojo -I$(SGX_SDK)/include
 
-App_C_Flags := $(SGX_COMMON_CFLAGS) -DMOJO_AVX -msse4 -mavx -fPIC -Wno-attributes $(App_Include_Paths)  #-fopenmp -DMOJO_OPM
+App_C_Flags := $(SGX_COMMON_CFLAGS) -DMOJO_AVX -msse4 -mavx -fPIC -Wno-attributes $(App_Include_Paths) -fopenmp -DMOJO_OPM
 #-D PartyNumber=2
 # Three configuration modes - Debug, prerelease, release
 #   Debug - Macro DEBUG enabled.
@@ -96,7 +96,7 @@ else
 endif
 
 App_Cpp_Flags := $(App_C_Flags) -std=c++11
-App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread #-fopenmp
+App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread -fopenmp
 
 ifneq ($(SGX_MODE), HW)
 	App_Link_Flags += -lsgx_uae_service_sim
