@@ -1,0 +1,29 @@
+mojo:
+
+input 227 227 3
+
+convolution 55 96 1 relu
+
+semi_stochastic_pool 27 96
+
+group_convolution 27 256 1 2 relu
+
+semi_stochastic_pool 13 256
+
+convolution 13 384 1 relu
+
+group_convolution 13 384 1 2 relu
+
+group_convolution 13 256 1 2 relu
+
+semi_stochastic_pool  6 256
+
+fully_connected 4096 relu
+
+dropout 0.5
+
+fully_connected 4096 relu
+
+dropout 0.5
+
+fully_connected 1000 softmax
