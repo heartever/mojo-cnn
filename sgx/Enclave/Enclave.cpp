@@ -43,10 +43,10 @@ int generate_random_number() {
 //std::string model_file="../models/cifar_deepcnet.mojo";
 std::string solver = "adam";
 mojo::network cnn(solver.c_str());
-const int mini_batch_size = 24;
-const float initial_learning_rate = 0.04f;
+const int mini_batch_size = 2;
+const float initial_learning_rate = 0.04f; 
 
-/*
+/* 
 //	mojo::network cnn(solver.c_str());
 	// !! the threading must be enabled with thread count prior to loading or creating a model !!
 //	cnn.enable_external_threads();
@@ -76,7 +76,7 @@ void new_network(const char *model_file)
 	cnn.set_mini_batch_size(mini_batch_size);
 	cnn.set_smart_training(true); // automate training
 	cnn.set_learning_rate(initial_learning_rate);
-	//    printf("model_file: %s\n", model_file);
+	    printf("model_file: %s\n", model_file);
     if(!cnn.read((char *)model_file)) 
     {
         printf("error: could not read model.\n");

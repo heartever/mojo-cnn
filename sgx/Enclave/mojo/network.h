@@ -770,7 +770,7 @@ public:
 			layer_count = atoi(s.c_str());
 			version = 1;
 			
-//			printf("version = 1, layer_count: %d, line: %s\n", layer_count, s);
+			printf("version = 1, layer_count: %d, line: %s\n", layer_count, s);
 		}
 		else if (s.find("mojo:") == 0)
 		{
@@ -785,8 +785,11 @@ public:
 				if(s[0]=='#') continue;
                 
 				push_back(dtoa(cnt), s.c_str());
+				
+				printf("layer %d: %s\n", cnt, s.c_str());
 				cnt++;
 			}
+			
 			connect_all();
 
 			// copies batch=0 stuff to other batches
@@ -797,7 +800,7 @@ public:
 		{
 			layer_count = atoi(s.c_str());
 			
-//			printf("layer_count: %d, line: %s\n", layer_count, s);
+			printf("layer_count: %d, line: %s\n", layer_count, s);
 		}
 		// read layer def
 		std::string layer_name;
@@ -808,7 +811,7 @@ public:
 			layer_def = getcleanline();
 			push_back(layer_name.c_str(), layer_def.c_str());
 			
-//			printf("%s: %s\n", layer_name.c_str(), layer_def.c_str());
+			printf("%s: %s\n", layer_name.c_str(), layer_def.c_str());
 		}
 
 		// read graph
@@ -831,13 +834,13 @@ public:
 		    for (auto i=0; i<graph_count; i++)
 		    {
 			    layer_name1= getcleanline();
-			   // printf("%d: %s", i, layer_name1.c_str());
+			   
 			    layer_name2 = getcleanline();
 			    
+			    printf("%d: %s", i, layer_name1.c_str());
+			    printf("\t%s", layer_name2.c_str());
 			    
-			    //printf("\t%s", layer_name2.c_str());
-			    
-			    //printf("\n");
+			    printf("\n");
 			    
 			    connect(layer_name1.c_str(), layer_name2.c_str());
 		    }
