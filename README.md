@@ -2,6 +2,9 @@
 * Only perform a layer in SGX, instead of the whole network
 * Larger networks
 
+#### Dependencies
+* Install opencv2 with the given script
+* gcc-7 (as the sgx/Enclave/msse4) is from gcc-7; May opt to gcc-5.
 
 #### Done
 * Classification
