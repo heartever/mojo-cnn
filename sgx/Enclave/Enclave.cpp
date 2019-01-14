@@ -43,10 +43,10 @@ int generate_random_number() {
 //std::string model_file="../models/cifar_deepcnet.mojo";
 std::string solver = "adam";
 mojo::network cnn(solver.c_str());
-const int mini_batch_size = 2;
-const float initial_learning_rate = 0.04f; 
+const int mini_batch_size = 24;
+const float initial_learning_rate = 0.001f;  // This is important
 
-/* 
+/*
 //	mojo::network cnn(solver.c_str());
 	// !! the threading must be enabled with thread count prior to loading or creating a model !!
 //	cnn.enable_external_threads();
@@ -85,7 +85,7 @@ void new_network(const char *model_file)
     printf(" Mojo CNN Configuration:\n");
 	printf("%s\n\n", cnn.get_configuration().c_str());
 	
-	cnn.set_random_augmentation(1,1,0,0,mojo::edge);
+	cnn.set_random_augmentation(2,2,0,0,mojo::edge); // padding
 }
 
 int cnn_outsize()

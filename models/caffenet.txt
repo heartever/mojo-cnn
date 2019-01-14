@@ -1,6 +1,6 @@
 mojo:
 # first line and filetype identifier must be 'mojo:' for quick start files
-# comments in quick start file must start at the beginning of the line (not after the layer description)
+# comments in quick start file must start at the beginning of the line (not after the layer description) https://github.com/BVLC/caffe/blob/master/models/bvlc_reference_caffenet/deploy.prototxt
 input 227 227 3
 
 convolution 11 96 4 relu
@@ -27,4 +27,4 @@ fully_connected 4096 relu
 
 dropout 0.5
 
-fully_connected 1000 softmax
+softmax 2

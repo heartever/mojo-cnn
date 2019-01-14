@@ -37,7 +37,6 @@
 #include <algorithm> 
 #include <immintrin.h>
 
-
 namespace mojo
 {
 
@@ -71,7 +70,7 @@ inline float unwrap_2d_dot(const float *x1, const float *x2, const int size, int
 
 // second item is rotated 180 (this is a convolution)
 inline float dot_rot180(const float *x1, const float *x2, const int size)	
-{	
+{
 	switch(size)
 	{
 	case 1:  return x1[0]*x2[0]; 
@@ -81,14 +80,18 @@ inline float dot_rot180(const float *x1, const float *x2, const int size)
 	case 5:  return x1[0]*x2[4]+x1[1]*x2[3]+x1[2]*x2[2]+x1[3]*x2[1]+x1[4]*x2[0]; 
 	default: 
 		float v=0;
-		for(int i=0; i<size; i++) v+=x1[i]*x2[size-i-1];
+		for(int i=0; i<size; i++) 
+		{
+		    v+=x1[i]*x2[size-i-1];
+		}
 		return v;	
 	};
 
 }
 inline float unwrap_2d_dot_rot180(const float *x1, const float *x2, const int size, int stride1, int stride2)	
 {	
-	float v=0;	
+	float v=0;
+
 	for(int j=0; j<size; j++) 
 	{
 		v+= dot_rot180(&x1[stride1*j],&x2[stride2*(size-j-1)],size);
