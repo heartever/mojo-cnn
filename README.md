@@ -6,6 +6,13 @@
 * Install opencv2 with the given script
 * gcc-7 (as the sgx/Enclave/msse4) is from gcc-7; May opt to gcc-5.
 
+Install gcc-7/g++-7 and modify the Makefile to use gcc-7/g++-7
+'''
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt update
+sudo apt install g++-7 -y
+'''
+
 #### Done
 * Classification
 * Training
