@@ -30,6 +30,9 @@
 #
 
 ######## SGX SDK Settings ########
+CXX = g++-7
+CC = gcc-7
+
 #SGX_DEBUG ?= 1
 SGX_PRERELEASE ?= 1
 SGX_SDK ?= /opt/intel/sgxsdk
