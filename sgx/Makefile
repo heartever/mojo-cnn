@@ -30,11 +30,14 @@
 #
 
 ######## SGX SDK Settings ########
+CXX = g++-7
+CC = gcc-7
+
 #SGX_DEBUG ?= 1
 SGX_PRERELEASE ?= 1
 SGX_SDK ?= /opt/intel/sgxsdk
-#SGX_MODE ?= SIM
-SGX_MODE ?= HW
+SGX_MODE ?= SIM
+#SGX_MODE ?= HW
 SGX_ARCH ?= x64
 
 ifeq ($(shell getconf LONG_BIT), 32)
@@ -64,7 +67,7 @@ endif
 ifeq ($(SGX_DEBUG), 1)
 		SGX_COMMON_CFLAGS += -O0 -g
 else
-		SGX_COMMON_CFLAGS += -O2
+		SGX_COMMON_CFLAGS += -O3
 endif
 
 ######## App Settings ########
@@ -77,7 +80,9 @@ endif
 
 # App_Cpp_Files := App/App.cpp $(wildcard App/Edger8rSyntax/*.cpp) $(wildcard App/TrustedLibrary/*.cpp)
 #App_Cpp_Files := App/test.cpp
-App_Cpp_Files := App/train_mnist.cpp
+#App_Cpp_Files := App/train_mnist.cpp
+#App_Cpp_Files := App/train_caffenet.cpp
+App_Cpp_Files := App/test_caffenet.cpp
  
 App_Include_Paths := -Imojo -I$(SGX_SDK)/include
 
@@ -96,7 +101,7 @@ else
 endif
 
 App_Cpp_Flags := $(App_C_Flags) -std=c++11
-App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread 
+App_Link_Flags := $(SGX_COMMON_CFLAGS) -L$(SGX_LIBRARY_PATH) -l$(Urts_Library_Name) -lpthread -lopencv_core -lopencv_imgproc -lopencv_highgui #-lopencv_imgcodecs 
 
 ifneq ($(SGX_MODE), HW)
 	App_Link_Flags += -lsgx_uae_service_sim

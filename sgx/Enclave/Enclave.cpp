@@ -44,7 +44,7 @@ int generate_random_number() {
 std::string solver = "adam";
 mojo::network cnn(solver.c_str());
 const int mini_batch_size = 24;
-const float initial_learning_rate = 0.04f;
+const float initial_learning_rate = 0.001f;  // This is important
 
 /*
 //	mojo::network cnn(solver.c_str());
@@ -76,7 +76,7 @@ void new_network(const char *model_file)
 	cnn.set_mini_batch_size(mini_batch_size);
 	cnn.set_smart_training(true); // automate training
 	cnn.set_learning_rate(initial_learning_rate);
-	//    printf("model_file: %s\n", model_file);
+	    printf("model_file: %s\n", model_file);
     if(!cnn.read((char *)model_file)) 
     {
         printf("error: could not read model.\n");
@@ -85,7 +85,7 @@ void new_network(const char *model_file)
     printf(" Mojo CNN Configuration:\n");
 	printf("%s\n\n", cnn.get_configuration().c_str());
 	
-	cnn.set_random_augmentation(1,1,0,0,mojo::edge);
+	cnn.set_random_augmentation(2,2,0,0,mojo::edge); // padding
 }
 
 int cnn_outsize()

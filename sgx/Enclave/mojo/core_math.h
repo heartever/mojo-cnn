@@ -402,7 +402,7 @@ class matrix
 	int _size;
 	int _capacity;
 	float *_x_mem;
-	void delete_x() { delete[] _x_mem; x = NULL;  _x_mem = NULL; }
+	void delete_x() { if(_x_mem != NULL) delete[] _x_mem; x = NULL;  _x_mem = NULL; }
 	// 4 extra for alignment and 4 for 3 padding for SSE
 	//float *new_x(const int size) { _x_mem = new float[size + 4+3];  x = (float *)(((uintptr_t)_x_mem + 16) & ~(uintptr_t)0x0F); return x; }
 	// avx mem aligment

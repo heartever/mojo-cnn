@@ -49,11 +49,11 @@
 #include <unistd.h>
 
 //*
-#include "mnist_parser.h"
-using namespace mnist;
-std::string data_path="../data/mnist/";
+#include "imagenet_parser.h"
+using namespace imagenet;
+std::string data_path="../data/imagenet10/";
 //std::string model_file="../models/mnist_deepcnet.mojo";
-std::string model_file="../models/snapshots/tmp_1.txt";
+std::string model_file="../models/snapshots/caffenet_tmp_0.txt";
 
 /*/
 #include "cifar_parser.h"

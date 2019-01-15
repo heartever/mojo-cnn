@@ -23,7 +23,7 @@
 //    THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 // ============================================================================
-//    train_mnist.cpp:  train MNIST classifier
+//    train_caffenet.cpp:  train caffenet classifier
 //
 //    Instructions: 
 //	  Add the "mojo" folder in your include path.
@@ -48,13 +48,13 @@
 #include <unistd.h>
 
 //*
-#include "mnist_parser.h"
+#include "imagenet_parser.h"
 
 
 
 std::string solver = "adam";
-std::string data_path="../data/mnist/";
-using namespace mnist;
+std::string data_path="../data/imagenet10/";
+using namespace imagenet;
 
 const int mini_batch_size = 24; // also defined in Enclave.cpp
 
@@ -129,6 +129,7 @@ void ocall_fprint_networkfile(const char* str) {
 
 void ocall_write(char *src, int sz)
 {
+//    printf("size: %d, src[%d-1]: %d\n", sz, sz, src[sz-1]);
     fwrite(src, 1, sz, output_network_file);
 }
 /////////////
@@ -174,7 +175,7 @@ void close_networkfile()
 
 void close_outputnetworkfile()
 {
-    fflush(output_network_file);
+//    fflush(output_network_file);
     if(output_network_file) fclose(output_network_file);
 }
 
@@ -227,13 +228,13 @@ int main()
 	std::vector<std::vector<float>> train_images;
 	std::vector<int> train_labels;
 
-	// calls MNIST::parse_test_data  or  CIFAR10::parse_test_data depending on 'using'
+	// calls MNIST::parse_test_data  or  IMAGENET::parse_test_data depending on 'using'
 	if (!parse_test_data(data_path, test_images, test_labels)) { std::cerr << "error: could not parse data.\n"; return 1; }
 	if (!parse_train_data(data_path, train_images, train_labels)) { std::cerr << "error: could not parse data.\n"; return 1; }
 
 	// ==== setup the network  - when you train you must specify an optimizer ("sgd", "rmsprop", "adagrad", "adam")
 
-    new_network(eid, "../models/mnist_quickstart.txt");
+    new_network(eid, "../models/caffenet.txt");
     std::cout << "new_network created.\n";
 	
 
@@ -303,9 +304,11 @@ int main()
 			reset_smart_training(eid);
 			old_accuracy = accuracy;
 		}
+		
+		cout<<">>>>>>>>>>>>>>>>>>>>"<<endl;
 
 		// save model
-		std::string model_file = "../models/snapshots/tmp_" + std::to_string((long long)_epoch) + ".txt";
+		std::string model_file = "../models/snapshots/caffenet_tmp_" + std::to_string((long long)_epoch) + ".txt";
 		write_model_file(eid, (char *)model_file.c_str());
 //		cnn.write(model_file,true);
 		std::cout << "  saved model:\t\t" << model_file << std::endl << std::endl;
@@ -318,7 +321,7 @@ int main()
 		log_out += model_file;
 		log.add_table_row(estimated_accuracy, accuracy, log_out);
 		// will write this every epoch
-		log.write("../models/snapshots/mojo_mnist_log.htm");
+		log.write("../models/snapshots/mojo_caffenet_log.htm");
 
 		// can't seem to improve
 		int elvisleft;

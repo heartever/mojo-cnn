@@ -641,7 +641,7 @@ public:
 //		ofs<<(int)(layer_cnt)<<std::endl;
 		
 		for(int j=0; j<(int)layer_sets[0].size(); j++)
-		    fprint_networkfile("%s\n%s", layer_sets[MAIN_LAYER_SET][j]->name, layer_sets[MAIN_LAYER_SET][j]->get_config_string());
+		    fprint_networkfile("%s\n%s", layer_sets[MAIN_LAYER_SET][j]->name, layer_sets[MAIN_LAYER_SET][j]->get_config_string().c_str());
 		//	ofs << layer_sets[MAIN_LAYER_SET][j]->name << std::endl << layer_sets[MAIN_LAYER_SET][j]->get_config_string();	
 			
 //			if (dynamic_cast<dropout_layer*> (layer_sets[0][j]) != NULL)
@@ -650,7 +650,7 @@ public:
 		fprint_networkfile("%d\n", (int)layer_graph.size());     
 		//ofs<<(int)layer_graph.size()<<std::endl;
 		for(int j=0; j<(int)layer_graph.size(); j++)
-		    fprint_networkfile("%s\n%s\n", layer_graph[j].first, layer_graph[j].second);
+		    fprint_networkfile("%s\n%s\n", layer_graph[j].first.c_str(), layer_graph[j].second.c_str());
 		//	ofs<<layer_graph[j].first << std::endl << layer_graph[j].second << std::endl;
 
 		if(binary)
@@ -662,7 +662,16 @@ public:
 			
 			for(int j=0; j<(int)layer_sets[MAIN_LAYER_SET].size(); j++)
 				if(layer_sets[MAIN_LAYER_SET][j]->use_bias())
-				    ocall_write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
+        {
+            int breakdown = 0; // 
+            while(breakdown + 200000 < layer_sets[MAIN_LAYER_SET][j]->bias.size())
+            {
+				      ocall_write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x + breakdown, 200000*sizeof(float));
+              breakdown += 200000;
+            }
+            ocall_write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x + breakdown, (layer_sets[MAIN_LAYER_SET][j]->bias.size()-breakdown)*sizeof(float));
+				//    ocall_write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
+        }
 				//    for(int k = 0; k < layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float); k++)
 				//	    fprint_networkfile("%c", (char*)layer_sets[MAIN_LAYER_SET][j]->bias.x+k);
 					//ofs.write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
@@ -670,7 +679,15 @@ public:
 			for (int j = 0; j < (int)W.size(); j++)
 			{
 				if (W[j])
-				    ocall_write((char*)W[j]->x, W[j]->size()*sizeof(float));
+        {
+            int breakdown = 0; // 
+            while(breakdown + 200000 < W[j]->size())
+            {
+				      ocall_write((char*)W[j]->x + breakdown, 200000*sizeof(float));
+              breakdown += 200000;
+            }
+            ocall_write((char*)W[j]->x + breakdown, (W[j]->size()-breakdown)*sizeof(float));
+        }
 				//    for(int k = 0; k < W[j]->size()*sizeof(float); k++)
 				//        fprint_networkfile("%c", (char*)W[j]->x+k);
 				//	ofs.write((char*)W[j]->x, W[j]->size()*sizeof(float));
@@ -706,7 +723,6 @@ public:
 			}
 		}
 		//ofs.flush();
-		
 		close_outputnetworkfile();
 		return true;
 	}
@@ -770,7 +786,7 @@ public:
 			layer_count = atoi(s.c_str());
 			version = 1;
 			
-//			printf("version = 1, layer_count: %d, line: %s\n", layer_count, s);
+			printf("version = 1, layer_count: %d, line: %s\n", layer_count, s);
 		}
 		else if (s.find("mojo:") == 0)
 		{
@@ -785,8 +801,11 @@ public:
 				if(s[0]=='#') continue;
                 
 				push_back(dtoa(cnt), s.c_str());
+				
+				printf("layer %d: %s\n", cnt, s.c_str());
 				cnt++;
 			}
+			
 			connect_all();
 
 			// copies batch=0 stuff to other batches
@@ -797,7 +816,7 @@ public:
 		{
 			layer_count = atoi(s.c_str());
 			
-//			printf("layer_count: %d, line: %s\n", layer_count, s);
+			printf("layer_count: %d, line: %s\n", layer_count, s);
 		}
 		// read layer def
 		std::string layer_name;
@@ -808,7 +827,7 @@ public:
 			layer_def = getcleanline();
 			push_back(layer_name.c_str(), layer_def.c_str());
 			
-//			printf("%s: %s\n", layer_name.c_str(), layer_def.c_str());
+			printf("%s: %s\n", layer_name.c_str(), layer_def.c_str());
 		}
 
 		// read graph
@@ -831,13 +850,13 @@ public:
 		    for (auto i=0; i<graph_count; i++)
 		    {
 			    layer_name1= getcleanline();
-			   // printf("%d: %s", i, layer_name1.c_str());
+			   
 			    layer_name2 = getcleanline();
 			    
+			    printf("%d: %s", i, layer_name1.c_str());
+			    printf("\t%s", layer_name2.c_str());
 			    
-			    //printf("\t%s", layer_name2.c_str());
-			    
-			    //printf("\n");
+			    printf("\n");
 			    
 			    connect(layer_name1.c_str(), layer_name2.c_str());
 		    }
@@ -855,31 +874,34 @@ public:
 			for(int j=0; j<(int)layer_sets[MAIN_LAYER_SET].size(); j++)
 				if (layer_sets[MAIN_LAYER_SET][j]->use_bias())
 				{
-					//int c = layer_sets[MAIN_LAYER_SET][j]->bias.chans;
-					//int cs = layer_sets[MAIN_LAYER_SET][j]->bias.chan_stride;
-					/*for (int i = 0; i < layer_sets[MAIN_LAYER_SET][j]->bias.size(); i++)
-					{
-					    ocall_getfloat((float *)layer_sets[MAIN_LAYER_SET][j]->bias.x + i);
-					} // ww31, seems not right
-					*/
-					
-					// use ocall_read instead, ww31
-					ocall_read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
-					
-					//	ifs.read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
+  					//int c = layer_sets[MAIN_LAYER_SET][j]->bias.chans;
+  					//int cs = layer_sets[MAIN_LAYER_SET][j]->bias.chan_stride  					
+  					// use ocall_read instead, ww31
+  				//	ocall_read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
+            int breakdown = 0; // 
+            while(breakdown + 200000 < layer_sets[MAIN_LAYER_SET][j]->bias.size())
+            {
+  			      ocall_read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x + breakdown, 200000*sizeof(float));
+              breakdown += 200000;
+            }
+            ocall_read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x + breakdown, (layer_sets[MAIN_LAYER_SET][j]->bias.size()-breakdown)*sizeof(float));
+  					
+  					//	ifs.read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
 				}
 			for (int j = 0; j < (int)W.size(); j++)
 			{
 
 				if (W[j])
 				{
-				    /*for(int i = 0; i < W[j]->size(); i++)
-				    {
-				        ocall_getfloat((float *)W[j]->x + i);
-				        
-				        
-				    }*/
-				    ocall_read((char*)W[j]->x, W[j]->size()*sizeof(float));
+				   
+				   // ocall_read((char*)W[j]->x, W[j]->size()*sizeof(float));
+             int breakdown = 0; // 
+              while(breakdown + 200000 < W[j]->size())
+              {
+    			      ocall_read((char*)W[j]->x + breakdown, 200000*sizeof(float));
+                breakdown += 200000;
+              }
+            ocall_read((char*)W[j]->x + breakdown, (W[j]->size()-breakdown)*sizeof(float));
 				 //   for(int i = 0; i < W[j]->size(); i++)
 				//        printf("W[j]->x[%d] = %f\n", i, W[j]->x[i]);
 				//	ifs.read((char*)W[j]->x, W[j]->size()*sizeof(float));

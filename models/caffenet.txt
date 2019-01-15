@@ -1,29 +1,30 @@
 mojo:
-
+# first line and filetype identifier must be 'mojo:' for quick start files
+# comments in quick start file must start at the beginning of the line (not after the layer description) https://github.com/BVLC/caffe/blob/master/models/bvlc_reference_caffenet/deploy.prototxt
 input 227 227 3
 
-convolution 55 96 1 relu
+convolution 11 96 4 relu
 
-semi_stochastic_pool 27 96
+semi_stochastic_pool 3 2
 
-group_convolution 27 256 1 2 relu
+group_convolution 5 256 1 2 relu
 
-semi_stochastic_pool 13 256
+semi_stochastic_pool 3 2
 
-convolution 13 384 1 relu
+convolution 3 384 1 relu
 
-group_convolution 13 384 1 2 relu
+group_convolution 3 384 1 2 relu
 
-group_convolution 13 256 1 2 relu
+group_convolution 3 256 1 2 relu
 
-semi_stochastic_pool  6 256
-
-fully_connected 4096 relu
-
-dropout 0.5
+semi_stochastic_pool 3 2
 
 fully_connected 4096 relu
 
 dropout 0.5
 
-fully_connected 1000 softmax
+fully_connected 4096 relu
+
+dropout 0.5
+
+softmax 5
