@@ -53,7 +53,7 @@
 using namespace imagenet;
 std::string data_path="../data/imagenet10/";
 //std::string model_file="../models/mnist_deepcnet.mojo";
-std::string model_file="../models/snapshots/tmp_0.txt";
+std::string model_file="../models/snapshots/caffenet_tmp_0.txt";
 
 /*/
 #include "cifar_parser.h"

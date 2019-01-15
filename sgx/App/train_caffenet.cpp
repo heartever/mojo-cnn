@@ -308,7 +308,7 @@ int main()
 		cout<<">>>>>>>>>>>>>>>>>>>>"<<endl;
 
 		// save model
-		std::string model_file = "../models/snapshots/tmp_" + std::to_string((long long)_epoch) + ".txt";
+		std::string model_file = "../models/snapshots/caffenet_tmp_" + std::to_string((long long)_epoch) + ".txt";
 		write_model_file(eid, (char *)model_file.c_str());
 //		cnn.write(model_file,true);
 		std::cout << "  saved model:\t\t" << model_file << std::endl << std::endl;
@@ -321,7 +321,7 @@ int main()
 		log_out += model_file;
 		log.add_table_row(estimated_accuracy, accuracy, log_out);
 		// will write this every epoch
-		log.write("../models/snapshots/mojo_mnist_log.htm");
+		log.write("../models/snapshots/mojo_caffenet_log.htm");
 
 		// can't seem to improve
 		int elvisleft;
