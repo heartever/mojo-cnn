@@ -123,12 +123,14 @@ int open_outputnetworkfile(const char* str)
 
 // OCall implementations, for open_outputnetworkfile
 void ocall_fprint_networkfile(const char* str) {
+//    printf("%s", str);
     fprintf(output_network_file, "%s", str);
 }
 
 void ocall_write(char *src, int sz)
 {
-    fwrite(src, 1, sz, fnetwork);
+//    printf("size: %d, src[%d-1]: %d\n", sz, sz, src[sz-1]);
+    fwrite(src, 1, sz, output_network_file);
 }
 /////////////
 
@@ -173,7 +175,7 @@ void close_networkfile()
 
 void close_outputnetworkfile()
 {
-    fflush(output_network_file);
+//    fflush(output_network_file);
     if(output_network_file) fclose(output_network_file);
 }
 
@@ -306,7 +308,7 @@ int main()
 		cout<<">>>>>>>>>>>>>>>>>>>>"<<endl;
 
 		// save model
-/*		std::string model_file = "../models/snapshots/tmp_" + std::to_string((long long)_epoch) + ".txt";
+		std::string model_file = "../models/snapshots/tmp_" + std::to_string((long long)_epoch) + ".txt";
 		write_model_file(eid, (char *)model_file.c_str());
 //		cnn.write(model_file,true);
 		std::cout << "  saved model:\t\t" << model_file << std::endl << std::endl;
@@ -320,7 +322,7 @@ int main()
 		log.add_table_row(estimated_accuracy, accuracy, log_out);
 		// will write this every epoch
 		log.write("../models/snapshots/mojo_mnist_log.htm");
-*/
+
 		// can't seem to improve
 		int elvisleft;
 		elvis_left_the_building(eid, &elvisleft);

@@ -891,10 +891,8 @@ public:
 	    std::string stride = dtoa(_stride);
 	    std::string space = " ";
 	    std::string cl = "\n";
-	    std::string group;
 	    
 	    std::string name = p_act->name;
-	    if(groups != 1) group = dtoa(groups);
 	    
 	    if(groups==1) 
 	    {
@@ -913,27 +911,14 @@ public:
 	        std::string str = namelayer + kernelcols + space + mapsstr + space + stride + space + name + cl;
 	    
 	    //    std::string str="convolution "+int2str(kernel_cols)+" "+int2str(maps)+" " + int2str(_stride) + " " +p_act->name+"\n"; 
+ 
 	        return str;
 	    }else
 	    {
-	        /*char *str = new char[strlen("group_convolution ") + strlen(kernelcols) + strlen(mapsstr) + strlen(stride) + strlen(group) + 5];
-	        char *tmp = str;
-	        strncpy(tmp, "group_convolution ", strlen("group_convolution ")); tmp += strlen("group_convolution ");
-	        strncpy(tmp, kernelcols, strlen(kernelcols)); tmp += strlen(kernelcols);
-	        strncpy(tmp, " ", 1); tmp += 1;
-	        strncpy(tmp, mapsstr, strlen(mapsstr)); tmp += strlen(mapsstr);
-	        strncpy(tmp, " ", 1); tmp += 1;
-	        strncpy(tmp, stride, strlen(stride)); tmp += strlen(stride);
-	        strncpy(tmp, " ", 1); tmp += 1;
-	        strncpy(tmp, group, strlen(group)); tmp += strlen(group);
-	        strncpy(tmp, " ", 1); tmp += 1;
-	        strncpy(tmp, p_act->name, strlen(p_act->name)); tmp += strlen(p_act->name);
-	        strncpy(tmp, "\n", 1); tmp += 1;*/
+          std::string groupstr = dtoa(groups);
 	        std::string namelayer = "group_convolution ";
 	        
-	        std::string str = namelayer + kernelcols + space + mapsstr + space + stride + space + group + space + name + cl;
-	    
-	    
+	        std::string str = namelayer + kernelcols + space + mapsstr + space + stride + space + groupstr + space + name + cl;
 	    //  std::string str="group_convolution "+int2str(kernel_cols)+" "+int2str(maps)+" " + int2str(_stride)+" " + int2str(groups) + " " +p_act->name+"\n"; 
 	        return str;
 	    }
