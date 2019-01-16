@@ -42,7 +42,7 @@ bool parse_test_data(std::string &data_path, std::vector<std::vector<float>> &te
         lines.push_back(make_pair(line.substr(0, pos), label));
     }
   
-    random_shuffle(lines.begin(), lines.end());
+ //   random_shuffle(lines.begin(), lines.end());
   
     for (int line_id = 0; line_id < lines.size(); ++line_id) 
     {

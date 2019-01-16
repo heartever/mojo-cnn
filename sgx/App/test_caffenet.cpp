@@ -53,7 +53,7 @@
 using namespace imagenet;
 std::string data_path="../data/imagenet10/";
 //std::string model_file="../models/mnist_deepcnet.mojo";
-std::string model_file="../models/snapshots/caffenet_tmp_0.txt";
+std::string model_file="../models/snapshots/caffenet_tmp_2.txt";
 
 /*/
 #include "cifar_parser.h"
@@ -204,6 +204,8 @@ void test(const std::vector<std::vector<float>> &test_images, const std::vector<
 		
 	//	printf("test image size: %d\n", test_images[k].size());
 		classification(eid, &prediction, (float *)test_images[k].data(), test_images[k].size()); // input data
+   
+//   std::cout<<"prediction: "<<prediction<<std::endl;
 	//	const int prediction=cnn.predict_class(test_images[k].data());
 		if(prediction ==test_labels[k]) correct_predictions++;
 		if(k%100==0) progress.draw_progress(k);

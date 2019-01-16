@@ -27,4 +27,4 @@ fully_connected 4096 relu
 
 dropout 0.5
 
-softmax 5
+softmax 3

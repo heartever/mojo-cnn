@@ -199,7 +199,7 @@ float test(const std::vector<std::vector<float>> &test_images, const std::vector
 		
 	//	printf("test image size: %d\n", test_images[k].size());
 		classification(eid, &prediction, (float *)test_images[k].data(), test_images[k].size()); // input data
-		
+//		std::cout<<"prediction: "<<prediction<<std::endl;
 		if (prediction == test_labels[k]) correct_predictions += 1;
 		if (k % 100 == 0) progress.draw_progress(k);
 	}
@@ -271,7 +271,7 @@ int main()
 		{
 			//cnn.train_class(train_images[k].data(), train_labels[k]);
 			train(eid, train_images[k].data(), train_images[k].size(), train_labels[k]);
-			if (k % 1000 == 0) progress.draw_progress(k);
+			if (k % 100 == 0) progress.draw_progress(k); 
 		}
 		
 		end_epoch(eid);
@@ -292,7 +292,7 @@ int main()
 		float train_accuracy=test(cnn, train_images, train_labels);
 		std::cout << "  train accuracy:\t"<<train_accuracy<<"% ("<< 100.f - train_accuracy<<"% error)      "<<std::endl;
 		*/
-
+    
 		// ==== run testing set
 		progress.reset((int)test_images.size(), "  testing out-of-sample:\t");
 		float accuracy = test(test_images, test_labels);

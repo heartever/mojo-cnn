@@ -53,7 +53,7 @@
 using namespace mnist;
 std::string data_path="../data/mnist/";
 //std::string model_file="../models/mnist_deepcnet.mojo";
-std::string model_file="../models/snapshots/tmp_1.txt";
+std::string model_file="../models/snapshots/tmp_6.txt";
 
 /*/
 #include "cifar_parser.h"

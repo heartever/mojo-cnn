@@ -907,7 +907,6 @@ public:
                 breakdown += blocksize;
               }
             ocall_read((char*)W[j]->x + breakdown*sizeof(float), (W[j]->size()-breakdown)*sizeof(float));
-			 
 				//	ifs.read((char*)W[j]->x, W[j]->size()*sizeof(float));
 				}
 			}
