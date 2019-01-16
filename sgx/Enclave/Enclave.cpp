@@ -44,7 +44,7 @@ int generate_random_number() {
 std::string solver = "adam";
 mojo::network cnn(solver.c_str());
 const int mini_batch_size = 24;
-const float initial_learning_rate = 0.001f;  // This is important
+const float initial_learning_rate = 0.0001f;  // This is important
 
 /*
 //	mojo::network cnn(solver.c_str());
