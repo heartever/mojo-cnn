@@ -241,6 +241,7 @@ public:
 		// doesn't care if shape is not 1D
 		// here weights are formated in matrix, top node in cols, bottom node along rows. (note that my top is opposite of traditional understanding)
 		// node += top.node.dot_1dx2d(w);
+ //  		printf(">>>>>>  %d  %d\n", w.rows, w.cols);
 		const int s = w.rows;
 		const int ts = top.node.size();
 		const int ts2 = top.node.cols*top.node.rows;

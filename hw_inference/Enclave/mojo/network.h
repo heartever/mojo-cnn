@@ -414,16 +414,22 @@ public:
 		
 		int w_i=(int)W.size();
 		matrix *w = l_bottom->new_connection(*l_top, w_i);
+		
+		printf("new connection finished..\n");
 		W.push_back(w);
+		printf("pushed back the new matrix\n");
 		layer_graph.push_back(std::make_pair(layer_name_top,layer_name_bottom));
+		printf("pushed back the layer_graph\n");
 		// need to build connections for other batches/threads
 		for(int i=1; i<(int)layer_sets.size(); i++)
 		{
+		    printf("delete new_connection\n");
 			l_top= layer_sets[i][i_top];
 			l_bottom= layer_sets[i][i_bottom];
 			delete l_bottom->new_connection(*l_top, w_i);
+			printf("new connection finished..\n");
 		}
-
+		printf("begin preparing the solver\n");
 		// we need to let solver prepare space for stateful information 
 		if (_solver)
 		{
@@ -436,38 +442,49 @@ public:
 
 		// ToDo: this may be broke when 2 layers connect to one. need to fix (i.e. resnet)
 		// after all connections, run through and do weights with correct fan count
-
+		printf("begin initialize weights\n");
 		// initialize weights - ToDo: separate and allow users to configure(?)
 		if (w && l_bottom->has_weights())
 		{
+		    printf("has_weights.\n");
 			if (strcmp(l_bottom->p_act->name, "tanh") == 0)
 			{
+			    printf("fill_random_uniform begin: tanh.\n");
 				// xavier : for tanh
 				float weight_base = (float)(std::sqrt(6. / ((double)fan_in + (double)fan_out)));
 				//		float weight_base = (float)(std::sqrt(.25/( (double)fan_in)));
 				w->fill_random_uniform(weight_base);
+				printf("fill_random_uniform finished.\n");
 			}
 			else if ((strcmp(l_bottom->p_act->name, "sigmoid") == 0) || (strcmp(l_bottom->p_act->name, "sigmoid") == 0))
 			{
+			    printf("fill_random_uniform begin: sigmoid.\n");
 				// xavier : for sigmoid
 				float weight_base = 4.f*(float)(std::sqrt(6. / ((double)fan_in + (double)fan_out)));
 				w->fill_random_uniform(weight_base);
+				printf("fill_random_uniform finished.\n");
 			}
 			else if ((strcmp(l_bottom->p_act->name, "lrelu") == 0) || (strcmp(l_bottom->p_act->name, "relu") == 0)
 				|| (strcmp(l_bottom->p_act->name, "vlrelu") == 0) || (strcmp(l_bottom->p_act->name, "elu") == 0))
 			{
 				// he : for relu
+				printf("fill_random_uniform begin: relu.\n");
 				float weight_base = (float)(std::sqrt(2. / (double)fan_in));
 				w->fill_random_normal(weight_base);
+				printf("fill_random_uniform finished.\n");
 			}
 			else
 			{
 				// lecun : orig
+				printf("fill_random_uniform begin: lecun : orig.\n");
 				float weight_base = (float)(std::sqrt(1. / (double)fan_in));
 				w->fill_random_uniform(weight_base);
+				
+				printf("fill_random_uniform finished.\n");
 			}
 		}
 		else if (w) w->fill(0);
+		printf("finished initialize weights\n");
 	}
 
 	// automatically connect all layers in the order they were provided 
@@ -541,8 +558,8 @@ public:
 	// train parameter is used to designate the forward pass is used in training (it turns on dropout layers, etc..)
 	float* forward(const float *in, int _thread_number=-1, int _train=0)
 	{
- //   for(int i = W[0]->size()-10; i < W[0]->size(); i++)
- //     printf("W[i]->x[%d] = %f\n", i, W[0]->x[i]);
+//        for(int i = W[0]->size()-10; i < W[0]->size(); i++)
+//            printf("W[i]->x[%d] = %f\n", i, W[0]->x[i]);
 		if(_thread_number<0) _thread_number=get_thread_num();
 		if (_thread_number > _thread_count && _thread_count>0) bail("need to enable threading\n");
 		if (_thread_number >= (int)layer_sets.size()) bail("need to enable threading\n");
@@ -586,29 +603,16 @@ public:
 				int connection_index = link.first; 
 				base_layer *p_bottom = link.second;
 				// weight distribution of the signal to layers under it
-#ifdef MOJO_PROFILE_LAYERS
-	StartCounter();
-#endif
+
 				p_bottom->accumulate_signal(*layer, *W[connection_index], _train);
 				//if (p_bottom->has_weights())
 			//for(int j=0; j<layer->node.chans; j++) 
 			//int j=0;	for (int i=0; i<layer->node.cols*layer->node.rows; i+=10)	std::cout<< layer->node.x[i+j*layer->node.chan_stride] <<"|";
-
-#ifdef MOJO_PROFILE_LAYERS
-		std::cout << p_bottom->name << "\t" << GetCounter() << "ms\n";
-#endif
-			
+	
 			}
 
 		}
 		// return pointer to float * result from last layer
-/*		std::cout << "out:";
-		for (int i = 0; i < 10; i++)
-		{
-			std::cout << layer_sets[_thread_number][layer_sets[_thread_number].size() - 1]->node.x[i] <<",";
-		}
-		std::cout << "\n";
-	*/
 		return layer_sets[_thread_number][layer_sets[_thread_number].size()-1]->node.x;
 	}
 	
@@ -886,8 +890,8 @@ public:
                     int breakdown = 0; // 
                     while(breakdown + blocksize < layer_sets[MAIN_LAYER_SET][j]->bias.size())
                     {
-          			      ocall_read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x + breakdown*sizeof(float), blocksize*sizeof(float));
-                      breakdown += blocksize;
+                        ocall_read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x + breakdown*sizeof(float), blocksize*sizeof(float));
+                        breakdown += blocksize;
                     }
                     ocall_read((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x + breakdown*sizeof(float), (layer_sets[MAIN_LAYER_SET][j]->bias.size()-breakdown)*sizeof(float));
   					
@@ -895,19 +899,19 @@ public:
 				}
 			for (int j = 0; j < (int)W.size(); j++)
 			{
-
+                printf("loading weight for %d-th layer\n", j);
 				if (W[j])
 				{
-				   
-				   // ocall_read((char*)W[j]->x, W[j]->size()*sizeof(float));
-             int breakdown = 0; // 
-              while(breakdown + blocksize < W[j]->size())
-              {
-    			      ocall_read((char*)W[j]->x + breakdown*sizeof(float), blocksize*sizeof(float));
-                breakdown += blocksize;
-              }
-            ocall_read((char*)W[j]->x + breakdown*sizeof(float), (W[j]->size()-breakdown)*sizeof(float));
-				//	ifs.read((char*)W[j]->x, W[j]->size()*sizeof(float));
+				    //   ocall_read_outenclave((uint64_t)(W[j]->x), W[j]->size()*sizeof(float));
+                    ocall_read_outenclave((uint64_t)(W[j]), W[j]->size()*sizeof(float));
+                /*    int breakdown = 0; // 
+                    while(breakdown + blocksize < W[j]->size())
+                    {
+                        ocall_read((char*)W[j]->x + breakdown*sizeof(float), blocksize*sizeof(float));
+                        breakdown += blocksize;
+                    }
+                    ocall_read((char*)W[j]->x + breakdown*sizeof(float), (W[j]->size()-breakdown)*sizeof(float));
+				//	ifs.read((char*)W[j]->x, W[j]->size()*sizeof(float));*/
 				}
 			}
 		}

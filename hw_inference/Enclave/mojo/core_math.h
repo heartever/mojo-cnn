@@ -646,17 +646,20 @@ public:
 	}
 	void fill_random_uniform(float range)
 	{
-        int i;
+	    ocall_fill_uniform(uint64_t (this), range);
+       /* int i;
         int j;
         uint32_t seed;
         
         float value;
         sgx_read_rand((unsigned char *)&seed, sizeof(uint32_t));
         
+        printf("read rand in fill_random_uniform finished, seed: %d.\n", seed);
         for (i = 0; i < _size; i++) 
         {
             x[i] = range*r4_uni ( &seed );
-        }
+//            printf("filled in x[%d]\n", i);
+        }*/
         /*unsigned char randnum[_size];
         sgx_read_rand(randnum, _size);
  //       sgx_read_rand((unsigned char *)x, sizeof(float)*_size);
@@ -671,7 +674,8 @@ public:
 	
 	void fill_random_normal(float std)
 	{
-        float fn[128];
+	    ocall_fill_normal(uint64_t (this), std);
+/*        float fn[128];
         uint32_t kn[128];
         int sample;
         uint32_t seed;
@@ -682,29 +686,13 @@ public:
 
         seed = 0;
         sgx_read_rand((unsigned char *)&seed, sizeof(uint32_t));
-
+        printf("read rand in fill_random_normal finished, seed: %d.\n", seed);
         for (int i = 0; i < _size; i++) 
         {
             x[i] = std*r4_nor(&seed, kn, fn, wn);
+//            printf("filled in x[%d]\n", i);
         }
-  
-  
-  
-	   /* const int numberoftrials = 50;
-	    unsigned char tmp[_size*numberoftrials] = {0}; // 10 uniform -> normal
-	    sgx_read_rand(tmp, _size*numberoftrials);
-	    
-	    for(int i = 0; i<_size; i++) 
-	    {
-	        //float sum = tmp[i*10] + tmp[i*10+1] + tmp[i*10+2] + tmp[i*10+3] + tmp[i*10+4] + tmp[i*10+5] + tmp[i*10+6] + tmp[i*10+7] + tmp[i*10+8] + tmp[i*10+9] + 0.0;
-	        float sum = 0.0;
-	        for(int j = 0; j < numberoftrials; j++)
-	            sum += tmp[j+numberoftrials*i];
-	            
-	        x[i] = (sum - 127.5*numberoftrials)/255.0/(numberoftrials+0.0)*std*3.464101615;  //sqrt(12)
-	        
-	    //    printf("std: %f, x[i]: %f\n", std, x[i]);
-	    }*/
+  */
 	   
 //		std::mt19937 gen(0);
 //		std::normal_distribution<float> dst(0, std);

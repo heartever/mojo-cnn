@@ -81,8 +81,8 @@ endif
 # App_Cpp_Files := App/App.cpp $(wildcard App/Edger8rSyntax/*.cpp) $(wildcard App/TrustedLibrary/*.cpp)
 #App_Cpp_Files := App/test.cpp
 #App_Cpp_Files := App/train_mnist.cpp
-App_Cpp_Files := App/train_caffenet.cpp
-#App_Cpp_Files := App/test_caffenet.cpp
+#App_Cpp_Files := App/train_caffenet.cpp
+App_Cpp_Files := App/test_caffenet.cpp
  
 App_Include_Paths := -Imojo -I$(SGX_SDK)/include
 

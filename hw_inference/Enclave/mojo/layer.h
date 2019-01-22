@@ -111,10 +111,20 @@ public:
 		{
 			int rows = node.cols*node.rows*node.chans;
 			int cols = top.node.cols*top.node.rows*top.node.chans;
-			return new matrix(cols, rows, 1);
+			//return new matrix(cols, rows, 1);
+			
+			uint64_t pmatrix;
+			ocall_newmatrix(&pmatrix, cols, rows, 1);
+			
+			printf("address: %p\n", pmatrix);
+			
+			return (matrix *)pmatrix;
 		}
 		else
+		{
+		    printf("new_connection _has_weights is false.\n");
 			return NULL;	
+	    }
 	}
 
 	//inline float f(float *in, int i, int size, float bias) {return p_act->f(in, i, size, bias);};
@@ -199,7 +209,8 @@ public:
 		// doesn't care if shape is not 1D
 		// here weights are formated in matrix, top node in cols, bottom node along rows. (note that my top is opposite of traditional understanding)
 		// node += top.node.dot_1dx2d(w);
-		const int s = w.rows;
+		printf(">>>>>>  %d  %d\n", w.rows, w.cols);
+/*		const int s = w.rows;
 		const int ts = top.node.size();
 		const int ts2 = top.node.cols*top.node.rows;
 
@@ -234,7 +245,7 @@ public:
 		{
 		MOJO_THREAD_THIS_LOOP(_thread_count)
 		for (int j = 0; j < s; j++)  node.x[j] += dot(top.node.x, w.x+j*w.cols, ts);  
-		}
+		}*/ //ww31
 	}
 
 };
@@ -799,7 +810,14 @@ public:
 		kernels_per_map += top.node.chans;
 		resize((top.node.cols-kernel_cols)/_stride+1, (top.node.rows-kernel_rows)/_stride+1, maps);
 
-		return new matrix(kernel_cols,kernel_rows, maps*kernels_per_map);
+        uint64_t pmatrix;
+		ocall_newmatrix(&pmatrix, kernel_cols,kernel_rows, maps*kernels_per_map);
+		
+		printf("address: %p\n", pmatrix);
+		
+		return (matrix *)pmatrix;
+			
+	//	return new matrix(kernel_cols,kernel_rows, maps*kernels_per_map);
 	}
 
 	// activate_nodes
@@ -820,8 +838,9 @@ public:
 
 
 	virtual void accumulate_signal( const base_layer &top, const matrix &w, const int train =0)
-	{	
-		const int kstep = top.node.chan_stride;// NOT the same as top.node.cols*top.node.rows;
+	{
+	// ww31	
+	/*	const int kstep = top.node.chan_stride;// NOT the same as top.node.cols*top.node.rows;
 		const int jstep=top.node.cols;
 		//int output_index=0;
 		const int kernel_size=kernel_cols*kernel_rows;
@@ -988,7 +1007,7 @@ public:
 					} // k
 				} // all maps=chans
 			} //g groups
-		} 
+		} */
 			
 	}
 
@@ -1060,7 +1079,15 @@ public:
 		//int total_kernels=top.node.chans*node.chans;
 		kernels_per_map += top.node.chans;
 		resize((top.node.cols - 1) / _pool, (top.node.rows - 1) / _pool, maps);
-		return new matrix(kernel_cols, kernel_rows, maps*kernels_per_map);
+		
+		uint64_t pmatrix;
+		ocall_newmatrix(&pmatrix, kernel_cols, kernel_rows, maps*kernels_per_map);
+		
+		printf("address: %p\n", pmatrix);
+		
+		return (matrix *)pmatrix;
+		
+		//return new matrix(kernel_cols, kernel_rows, maps*kernels_per_map);
 	}
 
 	// activate_nodes
@@ -1076,7 +1103,7 @@ public:
 
 	virtual void accumulate_signal(const base_layer &top, const matrix &w, const int train = 0)
 	{
-		const int kstep = top.node.chan_stride;
+/*		const int kstep = top.node.chan_stride;
 		const int jstep = top.node.cols;
 		//int output_index=0;
 		const int kernel_size = kernel_cols*kernel_rows;
@@ -1139,7 +1166,7 @@ MOJO_THREAD_THIS_LOOP(_thread_count)
 					cnt++;
 				}
 			}
-		}
+		}*/ //ww31
 	}
 
 };

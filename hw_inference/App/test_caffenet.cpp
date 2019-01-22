@@ -163,6 +163,17 @@ void ocall_read(char *src, int sz)
     fread(src, 1, sz, fnetwork);
 }
 
+void ocall_read_outenclave(uint64_t src, int sz)
+{
+    printf("address: %p, size: %d\n", src, sz);
+
+	mojo::matrix *m = (mojo::matrix *)src;
+			
+    fread((char *)m->x, 1, sz, fnetwork);
+    
+    printf("loaded.\n");
+}
+
 void end_this_line()
 {
     char s[256];
@@ -180,6 +191,25 @@ void close_outputnetworkfile()
 {
     fflush(output_network_file);
     if(output_network_file) fclose(output_network_file);
+}
+
+uint64_t ocall_newmatrix(int cols, int rows, int chans)
+{
+    mojo::matrix *ret = new mojo::matrix(cols, rows, 1);
+    
+    return (uint64_t)ret;
+}
+
+void ocall_fill_uniform(uint64_t pmatrix, float range)
+{
+    mojo::matrix *m = (mojo::matrix *)pmatrix;
+    m->fill_random_uniform(range);
+}
+
+void ocall_fill_normal(uint64_t pmatrix, float std)
+{
+    mojo::matrix *m = (mojo::matrix *)pmatrix;
+    m->fill_random_normal(std);
 }
 
 void test(const std::vector<std::vector<float>> &test_images, const std::vector<int> &test_labels)
