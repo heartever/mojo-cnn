@@ -53,7 +53,7 @@
 using namespace imagenet;
 std::string data_path="../data/imagenet10/";
 //std::string model_file="../models/mnist_deepcnet.mojo";
-std::string model_file="caffenet_tmp_2.txt"; //../models/snapshots/
+std::string model_file="../models/caffenet.txt"; //../models/snapshots/
 
 /*/
 #include "cifar_parser.h"
@@ -165,13 +165,13 @@ void ocall_read(char *src, int sz)
 
 void ocall_read_outenclave(uint64_t src, int sz)
 {
-    printf("address: %p, size: %d\n", src, sz);
+//    printf("address: %p, size: %d\n", src, sz);
 
-	mojo::matrix *m = (mojo::matrix *)src;
+//	mojo::matrix *m = (mojo::matrix *)src;
 			
-    fread((char *)m->x, 1, sz, fnetwork);
+    fread((char *)src, 1, sz, fnetwork);
     
-    printf("loaded.\n");
+//    printf("loaded.\n");
 }
 
 void end_this_line()
@@ -193,9 +193,12 @@ void close_outputnetworkfile()
     if(output_network_file) fclose(output_network_file);
 }
 
-uint64_t ocall_newmatrix(int cols, int rows, int chans)
+uint64_t ocall_newmatrix(uint64_t * px,  int *size, int cols, int rows, int chans)
 {
-    mojo::matrix *ret = new mojo::matrix(cols, rows, 1);
+    mojo::matrix *ret = new mojo::matrix(cols, rows, chans);
+    //printf("OCALL: %p %p, size: %d, %d, cols, rows = %d %d\n", ret, ret->x, ret->size(), ret->_size, cols, rows);
+    *px = (uint64_t) ret->x; 
+    *size = ret->size();
     
     return (uint64_t)ret;
 }

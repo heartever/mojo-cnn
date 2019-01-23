@@ -43,6 +43,16 @@ namespace mojo
 {
 #define bail(txt) { printf("ERROR : %s @ file: %s %d: line: function %s\n", txt, __FILE__, __LINE__, __FUNCTION__); throw;}
 
+typedef struct
+{
+    uint64_t pmatrix;
+    float * x;
+    int rows;
+    int cols;
+    int chans;
+    int size;
+}enclave_matrix;
+
 
 //----------------------------------------------------------------------------------------------------------
 // B A S E   L A Y E R
@@ -72,7 +82,7 @@ public:
 	// index of W matrix, index of connected layer
 	std::vector<std::pair<int,base_layer*>> forward_linked_layers;
 
-	virtual void accumulate_signal(const base_layer &top_node, const matrix &w, const int train =0) =0;
+	virtual void accumulate_signal(const base_layer &top_node, const enclave_matrix &w, const int train =0) =0;
 
 	base_layer(const char* layer_name, int _w, int _h=1, int _c=1) : node(_w, _h, _c),  p_act(NULL), name(layer_name), _has_weights(true), pad_cols(0), pad_rows(0), _learning_factor(1.f), _use_bias(false), _thread_count(1)
 	{
@@ -104,8 +114,9 @@ public:
 
 		}
 	}
-	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
+	virtual enclave_matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
+//	    printf("new connection: baselayer->%s\n", top.get_config_string());
 		top.forward_linked_layers.push_back(std::make_pair((int)weight_mat_index,this));
 		if (_has_weights)
 		{
@@ -113,17 +124,24 @@ public:
 			int cols = top.node.cols*top.node.rows*top.node.chans;
 			//return new matrix(cols, rows, 1);
 			
-			uint64_t pmatrix;
-			ocall_newmatrix(&pmatrix, cols, rows, 1);
+			uint64_t pmatrix; uint64_t px; int size;
+			ocall_newmatrix(&pmatrix, &px, &size, cols, rows, 1);
 			
-			printf("address: %p\n", pmatrix);
+	//		printf("address: %p %p\n", pmatrix, px);
 			
-			return (matrix *)pmatrix;
+			enclave_matrix *ret = new enclave_matrix;
+			ret->pmatrix = pmatrix; ret->cols = cols; ret->rows = rows; ret->chans = 1; ret->x = (float *)px; ret->size = size;
+			return ret;
+			
+			//return (matrix *)pmatrix;
 		}
 		else
 		{
-		    printf("new_connection _has_weights is false.\n");
-			return NULL;	
+	//	    printf("new_connection _has_weights is false.\n");
+		    enclave_matrix *ret = new enclave_matrix;
+            ret->pmatrix = NULL; ret->x = NULL; ret->size = 0; ret->cols = 0; ret->rows = 0;
+		    return ret;
+			//return NULL;	
 	    }
 	}
 
@@ -144,7 +162,7 @@ public:
 	virtual void activate_nodes() { /*node.reset_empty_chans(); */}
 	virtual void distribute_delta(base_layer &top, const matrix &w, const int train =1) {}
 	virtual void calculate_dw(const base_layer &top_layer, matrix &dw, const int train =1) {}
-	virtual void accumulate_signal(const base_layer &top_node, const matrix &w, const int train =0) {}
+	virtual void accumulate_signal(const base_layer &top_node, const enclave_matrix &w, const int train =0) {}
 	virtual std::string get_config_string() 
 	{
 	    std::string namelayer = "input ";
@@ -204,13 +222,14 @@ public:
 	    std::string str = layername + nodesize + space + name + cl;
 	    return str;
 	}
-	virtual void accumulate_signal( const base_layer &top,const matrix &w, const int train =0)
+	virtual void accumulate_signal( const base_layer &top, const enclave_matrix &w, const int train =0)
 	{
 		// doesn't care if shape is not 1D
 		// here weights are formated in matrix, top node in cols, bottom node along rows. (note that my top is opposite of traditional understanding)
 		// node += top.node.dot_1dx2d(w);
-		printf(">>>>>>  %d  %d\n", w.rows, w.cols);
-/*		const int s = w.rows;
+//		printf(">>>>>>  %d  %d\n", w.rows, w.cols);
+//        printf("input: %f, weight: %f (%s)\n", top.node.x[0], w.x[0], get_config_string());
+		const int s = w.rows;
 		const int ts = top.node.size();
 		const int ts2 = top.node.cols*top.node.rows;
 
@@ -243,9 +262,9 @@ public:
 		}
 		else
 		{
-		MOJO_THREAD_THIS_LOOP(_thread_count)
-		for (int j = 0; j < s; j++)  node.x[j] += dot(top.node.x, w.x+j*w.cols, ts);  
-		}*/ //ww31
+		    MOJO_THREAD_THIS_LOOP(_thread_count)
+		    for (int j = 0; j < s; j++)  node.x[j] += dot(top.node.x, w.x+j*w.cols, ts);  
+		} //ww31
 	}
 
 };
@@ -305,7 +324,7 @@ public:
 	}
 	// no weights 
 	virtual void calculate_dw(const base_layer &top_layer, matrix &dw, const int train =1) {}
-	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
+	virtual enclave_matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
 			// need to set the size of this layer
 		// can really only handle one connection comming in to this
@@ -325,7 +344,7 @@ public:
 
 	// this is downsampling
 	// the pool size must fit correctly in the image map (use resize prior to call if this isn't the case)
-	virtual void accumulate_signal(const base_layer &top,const matrix &w,const int train =0)
+	virtual void accumulate_signal(const base_layer &top,const enclave_matrix &w,const int train =0)
 	{
 		int kstep = top.node.chan_stride; // top.node.cols*top.node.rows;
 		int jstep=top.node.cols;
@@ -452,7 +471,7 @@ public:
 	    //std::string str = "semi_stochastic_pool " + int2str(_pool_size) + " " + int2str(_stride) + "\n"; 
 	    return str; 
 	}
-	virtual void accumulate_signal(const base_layer &top, const matrix &w, const int train = 0)
+	virtual void accumulate_signal(const base_layer &top, const enclave_matrix &w, const int train = 0)
 	{
 		int kstep = top.node.cols*top.node.rows;
 		int jstep = top.node.cols;
@@ -575,7 +594,7 @@ public:
 
 	// no weights 
 	virtual void calculate_dw(const base_layer &top_layer, matrix &dw, const int train = 1) {}
-	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
+	virtual enclave_matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
 		resize(top.node.cols, top.node.rows, top.node.chans);
 		return base_layer::new_connection(top, weight_mat_index);
@@ -585,7 +604,7 @@ public:
 	// we know this is called first in the backward pass, and the train will be set to 1
 	// when that happens the dropouts will be set. 
 	// different dropouts for each mininbatch... don't know if that matters...
-	virtual void accumulate_signal(const base_layer &top, const matrix &w, const int train = 0)
+	virtual void accumulate_signal(const base_layer &top, const enclave_matrix &w, const int train = 0)
 	{
 		const float *top_node = top.node.x;
 		const int size = top.node.chans*top.node.rows*top.node.cols;
@@ -668,7 +687,7 @@ public:
 	virtual void activate_nodes() { return; }
 	// no weights 
 	virtual void calculate_dw(const base_layer &top_layer, matrix &dw, const int train = 1) {}
-	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
+	virtual enclave_matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
 		// wasteful to add weight matrix (1x1x1), but makes other parts of code more OO
 		// bad will happen if try to put more than one pool layer
@@ -677,7 +696,9 @@ public:
 		int h = (top.node.rows) / 1;
 		resize(w, h, top.node.chans);
 
-		return NULL;
+        enclave_matrix *ret = new enclave_matrix;
+        ret->pmatrix = NULL;
+		return ret;
 		//return new matrix(1, 1, 1);
 	}
 
@@ -685,7 +706,7 @@ public:
 	// we know this is called first in the backward pass, and the train will be set to 1
 	// when that happens the dropouts will be set. 
 	// different dropouts for each mininbatch... don't know if that matters...
-	virtual void accumulate_signal(const base_layer &top, const matrix &w, const int train = 0)
+	virtual void accumulate_signal(const base_layer &top, const enclave_matrix &w, const int train = 0)
 	{
 		const float *top_node = top.node.x;
 		const int chan_size = top.node.rows*top.node.cols;
@@ -801,8 +822,9 @@ public:
 	}
 
 	// this connection work won't work with multiple top layers (yet)
-	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
+	virtual enclave_matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
+//	    printf("new connection: convolution_layer\n");
 		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index,this));
 	
 		// re-shuffle these things so weights of size kernel w,h,kerns - node of size see below
@@ -810,12 +832,17 @@ public:
 		kernels_per_map += top.node.chans;
 		resize((top.node.cols-kernel_cols)/_stride+1, (top.node.rows-kernel_rows)/_stride+1, maps);
 
-        uint64_t pmatrix;
-		ocall_newmatrix(&pmatrix, kernel_cols,kernel_rows, maps*kernels_per_map);
+        uint64_t pmatrix; uint64_t px; int size;
+		ocall_newmatrix(&pmatrix, &px, &size, kernel_cols, kernel_rows, maps*kernels_per_map);
 		
-		printf("address: %p\n", pmatrix);
+//		printf("%d  %d   %d, size: %d\n", kernel_cols, kernel_rows, maps*kernels_per_map, size);
+//		printf("address: %p\n", pmatrix);
+		enclave_matrix *ret = new enclave_matrix;
+		ret->pmatrix = pmatrix; ret->cols = kernel_cols; ret->rows = kernel_rows; ret->x = (float *)px; ret->chans = maps*kernels_per_map; ret->size = size;
+			
+		return ret;
 		
-		return (matrix *)pmatrix;
+		//return (matrix *)pmatrix;
 			
 	//	return new matrix(kernel_cols,kernel_rows, maps*kernels_per_map);
 	}
@@ -837,10 +864,11 @@ public:
 	}
 
 
-	virtual void accumulate_signal( const base_layer &top, const matrix &w, const int train =0)
+	virtual void accumulate_signal( const base_layer &top, const enclave_matrix &w, const int train =0)
 	{
 	// ww31	
-	/*	const int kstep = top.node.chan_stride;// NOT the same as top.node.cols*top.node.rows;
+//	    printf("input: %f, weight: %f (%s)\n", top.node.x[0], w.x[0], get_config_string());
+		const int kstep = top.node.chan_stride;// NOT the same as top.node.cols*top.node.rows;
 		const int jstep=top.node.cols;
 		//int output_index=0;
 		const int kernel_size=kernel_cols*kernel_rows;
@@ -856,12 +884,14 @@ public:
 		const int node_size= node.cols;
 		const int top_node_size = top.node.cols;
 		const int outsize = node_size*node_size;
-		//printf("%d %d %d,", top.node.chans, node.chans, groups);
+	//	printf("%d %d %d,\n", top.node.chans, node.chans, groups);
+	//	printf("kernel_rows: %d\n", kernel_rows);
 		if ((top.node.chans == node.chans) && (top.node.chans==groups))
 		{
-			//	printf("here");
+	//		printf("**************************   1111111\n");
 			if(kernel_rows>=2 && (kernel_rows<=5))
 			{
+	//		    printf("**************************   2222222\n");
 				matrix img_ptr(node_size, node_size, kernel_rows*kernel_rows, NULL, true);
 
 				for (int k = 0; k < map_cnt; k++) // input channels --- same as kernels_per_map - kern for each input
@@ -893,7 +923,7 @@ public:
 			}
 			else if (kernel_rows == 1)
 			{
-
+   //             printf("**************************   333333\n");
 				for (int k = 0; k < map_cnt; k++) // input channels --- same as kernels_per_map - kern for each input
 				{
 						const float *_top_node = &top.node.x[k*kstep];
@@ -908,6 +938,7 @@ public:
 		
 		if(kernel_rows>=2 && (kernel_rows<=5))
 		{
+	//	    printf("**************************   44444444\n");
 			matrix img_ptr(node_size, node_size, kernel_rows*kernel_rows, NULL, true);
 
 			const int maps_per_group = map_cnt/groups;
@@ -950,6 +981,7 @@ public:
 		}
 		else if (kernel_rows == 1)
 		{
+//		    printf("**************************   555555\n");
 			const int maps_per_group = map_cnt/groups;
 			const int top_chan_per_group = top_chans/groups;
 		//	const int group_start=0;
@@ -978,7 +1010,7 @@ public:
 		}
 		else
 		{
-
+  //          printf("**************************   66666666:  %f\n", w.x[0]);
 			const int maps_per_group = map_cnt/groups;
 			const int top_chan_per_group = top_chans/groups;
 
@@ -996,18 +1028,21 @@ public:
 					{
 						MOJO_THREAD_THIS_LOOP_DYNAMIC(_thread_count)
 						for(int j=0; j<node_size; j+= stride) // input h 
- 							for(int i=0; i<node_size; i+= stride) // intput w
-								node.x[i+(j)*node.cols +map_stride*map]+= 
+ 							for(int i=0; i<node_size; i+= stride) // intput w 
+ 							{
+ 							 //   printf("%d: %f\n", (map+k*maps)*kernel_size, w.x[(map+k*maps)*kernel_size]);
+ 							    node.x[i+(j)*node.cols +map_stride*map]+= 
 									unwrap_2d_dot(
 										&top.node.x[(i)+(j)*jstep + k*kstep],
 										&w.x[(map+k*maps)*kernel_size],
 										kernel_cols,
 										jstep,kernel_cols);
+							}
 					
 					} // k
 				} // all maps=chans
 			} //g groups
-		} */
+		} 
 			
 	}
 
@@ -1072,20 +1107,24 @@ public:
 	}
 
 	// this connection work won't work with multiple top layers (yet)
-	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
+	virtual enclave_matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
+//	    	    printf("new connection: deepcnet_layer\n");
 		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index, this));
 		// re-shuffle these things so weights of size kernel w,h,kerns - node of size see below
 		//int total_kernels=top.node.chans*node.chans;
 		kernels_per_map += top.node.chans;
 		resize((top.node.cols - 1) / _pool, (top.node.rows - 1) / _pool, maps);
 		
-		uint64_t pmatrix;
-		ocall_newmatrix(&pmatrix, kernel_cols, kernel_rows, maps*kernels_per_map);
+		uint64_t pmatrix; uint64_t px; int size;
+		ocall_newmatrix(&pmatrix, &px, &size, kernel_cols, kernel_rows, maps*kernels_per_map);
 		
-		printf("address: %p\n", pmatrix);
+//		printf("address: %p\n", pmatrix);
+		enclave_matrix *ret = new enclave_matrix;
+		ret->pmatrix = pmatrix; ret->cols = kernel_cols; ret->rows = kernel_rows; ret->x = (float *)px; ret->chans = maps*kernels_per_map; ret->size = size;
+		return ret;
 		
-		return (matrix *)pmatrix;
+		//return (matrix *)pmatrix;
 		
 		//return new matrix(kernel_cols, kernel_rows, maps*kernels_per_map);
 	}
@@ -1101,9 +1140,10 @@ public:
 		for (int c=0; c<_maps; c++) p_act->fc(&node.x[c*map_stride],map_size,bias.x[c]);
 	}
 
-	virtual void accumulate_signal(const base_layer &top, const matrix &w, const int train = 0)
+	virtual void accumulate_signal(const base_layer &top, const enclave_matrix &w   , const int train = 0)
 	{
-/*		const int kstep = top.node.chan_stride;
+//	    printf("input: %f, weight: %f (%s)\n", top.node.x[0], w.x[0], get_config_string());
+		const int kstep = top.node.chan_stride;
 		const int jstep = top.node.cols;
 		//int output_index=0;
 		const int kernel_size = kernel_cols*kernel_rows;
@@ -1133,7 +1173,7 @@ public:
 			unwrap_aligned_NxN(2, img_ptr.x, &top.node.x[k*kstep], jstep, 1);
 
 //			MOJO_THREAD_THIS_LOOP_DYNAMIC(_thread_count)
-MOJO_THREAD_THIS_LOOP(_thread_count)
+            MOJO_THREAD_THIS_LOOP(_thread_count)
 			for (int map = 0; map < map_cnt; map+=1) // how many maps  maps= node.chans
 			{
 				//std::cout << omp_get_thread_num();
@@ -1166,7 +1206,7 @@ MOJO_THREAD_THIS_LOOP(_thread_count)
 					cnt++;
 				}
 			}
-		}*/ //ww31
+		} //ww31
 	}
 
 };
@@ -1218,7 +1258,7 @@ public:
 		return str; 
 	}
 	// this connection work won't work with multiple top layers (yet)
-	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
+	virtual enclave_matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
 		//if (layer_to_channel[&top]) bail("layer already addded to pad layer"); //already exists
 		layer_to_channel[&top] = _maps;
@@ -1230,7 +1270,7 @@ public:
 	// no weights 
 	virtual void calculate_dw(const base_layer &top_layer, matrix &dw, const int train = 1) {}
 
-	virtual void accumulate_signal(const base_layer &top, const matrix &w, const int train = 0)
+	virtual void accumulate_signal(const base_layer &top, const enclave_matrix &w, const int train = 0)
 	{
 		const float *top_node = top.node.x;
 		const int size = node.rows*node.cols;
@@ -1334,8 +1374,9 @@ public:
 	virtual void activate_nodes() { return; }
 	// no weights 
 	virtual void calculate_dw(const base_layer &top_layer, matrix &dw, const int train = 1) {}
-	virtual matrix * new_connection(base_layer &top, int weight_mat_index)
+	virtual enclave_matrix * new_connection(base_layer &top, int weight_mat_index)
 	{
+//	    printf("shuffle layer\n");
 		// wasteful to add weight matrix (1x1x1), but makes other parts of code more OO
 		// bad will happen if try to put more than one top layer
 		top.forward_linked_layers.push_back(std::make_pair(weight_mat_index, this));
@@ -1343,12 +1384,15 @@ public:
 		int h = (top.node.rows) / 1;
 		resize(w, h, top.node.chans);
 
-		return NULL;
+        enclave_matrix *ret = new enclave_matrix;
+        ret->pmatrix = NULL; ret->x = NULL; ret->size = 0; ret->cols = 0; ret->rows = 0;
+		return ret;
+		//return NULL;
 		//return new matrix(1, 1, 1);
 	}
 
 	
-	virtual void accumulate_signal(const base_layer &top, const matrix &w, const int train = 0)
+	virtual void accumulate_signal(const base_layer &top, const enclave_matrix &w, const int train = 0)
 	{
 
 		const int gsize = top.node.chans/groups;

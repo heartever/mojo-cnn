@@ -65,9 +65,12 @@ inline float dot(const float *x1, const float *x2, const int size)
 inline float unwrap_2d_dot(const float *x1, const float *x2, const int size, int stride1, int stride2)	
 {	
 	float v=0;	
-
+   
 	for(int j=0; j<size; j++) 
+	{
+	//    printf(">>>>>>> %f    %f\n", x1[stride1*j], x2[stride2*j]);
 		v+= dot(&x1[stride1*j],&x2[stride2*j],size);
+	}
 	return v;
 }
 
@@ -399,7 +402,6 @@ inline void dotsum_unwrapped_7x7(const float *_img, const float *filter_ptr, flo
 
 class matrix
 {
-	int _size;
 	int _capacity;
 	float *_x_mem;
 	void delete_x() { if(_x_mem != NULL) delete[] _x_mem; x = NULL;  _x_mem = NULL; }
@@ -410,6 +412,7 @@ class matrix
 public:
 	std::string _name;
 	int cols, rows, chans;
+	int _size;
 	int chan_stride;
 	int chan_aligned;
 	float *x;

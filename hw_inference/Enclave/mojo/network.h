@@ -221,7 +221,7 @@ public:
 	
 	std::map<std::string, int> layer_map;  // name-to-index of layer for layer management
 	std::vector<std::pair<std::string, std::string>> layer_graph; // pairs of names of layers that are connected
-	std::vector<matrix *> W; // these are the weights between/connecting layers 
+	std::vector<enclave_matrix *> W; // these are the weights between/connecting layers 
 
 	// these sets are needed because we need copies for each item in mini-batch
 	std::vector< std::vector<matrix>> dW_sets; // only for training, will have _batch_size of these
@@ -360,7 +360,7 @@ public:
 			matrix noise(w->cols, w->rows, w->chans);
 			noise.fill_random_normal(1.f/ noise.size());
 			//noise *= *w;
-			*w += noise; 
+			*((matrix *)w->pmatrix) += noise; 
 		}
 	}
 
@@ -368,7 +368,7 @@ public:
 	void remove_means()
 	{
 		__for__(auto w __in__ W)
-			if(w) w->remove_mean();
+			if(w) ((matrix *)w->pmatrix)->remove_mean();
 	}
 
 	// used to push a layer back in the ORDERED list of layers
@@ -413,23 +413,24 @@ public:
 		base_layer *l_bottom= layer_sets[MAIN_LAYER_SET][i_bottom];
 		
 		int w_i=(int)W.size();
-		matrix *w = l_bottom->new_connection(*l_top, w_i);
+//		matrix *w = l_bottom->new_connection(*l_top, w_i);
+        enclave_matrix *w = l_bottom->new_connection(*l_top, w_i);
 		
-		printf("new connection finished..\n");
+	//	printf("new connection finished..\n");
 		W.push_back(w);
-		printf("pushed back the new matrix\n");
+	//	printf("pushed back the new matrix\n");
 		layer_graph.push_back(std::make_pair(layer_name_top,layer_name_bottom));
-		printf("pushed back the layer_graph\n");
+	//	printf("pushed back the layer_graph\n");
 		// need to build connections for other batches/threads
 		for(int i=1; i<(int)layer_sets.size(); i++)
 		{
-		    printf("delete new_connection\n");
+	//	    printf("delete new_connection\n");
 			l_top= layer_sets[i][i_top];
 			l_bottom= layer_sets[i][i_bottom];
 			delete l_bottom->new_connection(*l_top, w_i);
-			printf("new connection finished..\n");
+	//		printf("new connection finished..\n");
 		}
-		printf("begin preparing the solver\n");
+	//	printf("begin preparing the solver\n");
 		// we need to let solver prepare space for stateful information 
 		if (_solver)
 		{
@@ -442,49 +443,49 @@ public:
 
 		// ToDo: this may be broke when 2 layers connect to one. need to fix (i.e. resnet)
 		// after all connections, run through and do weights with correct fan count
-		printf("begin initialize weights\n");
+		//printf("begin initialize weights\n");
 		// initialize weights - ToDo: separate and allow users to configure(?)
 		if (w && l_bottom->has_weights())
 		{
-		    printf("has_weights.\n");
+		//    printf("has_weights.\n");
 			if (strcmp(l_bottom->p_act->name, "tanh") == 0)
 			{
-			    printf("fill_random_uniform begin: tanh.\n");
+		//	    printf("fill_random_uniform begin: tanh.\n");
 				// xavier : for tanh
 				float weight_base = (float)(std::sqrt(6. / ((double)fan_in + (double)fan_out)));
 				//		float weight_base = (float)(std::sqrt(.25/( (double)fan_in)));
-				w->fill_random_uniform(weight_base);
-				printf("fill_random_uniform finished.\n");
+				((matrix *)w->pmatrix)->fill_random_uniform(weight_base);
+		//		printf("fill_random_uniform finished.\n");
 			}
 			else if ((strcmp(l_bottom->p_act->name, "sigmoid") == 0) || (strcmp(l_bottom->p_act->name, "sigmoid") == 0))
 			{
-			    printf("fill_random_uniform begin: sigmoid.\n");
+		//	    printf("fill_random_uniform begin: sigmoid.\n");
 				// xavier : for sigmoid
 				float weight_base = 4.f*(float)(std::sqrt(6. / ((double)fan_in + (double)fan_out)));
-				w->fill_random_uniform(weight_base);
-				printf("fill_random_uniform finished.\n");
+				((matrix *)w->pmatrix)->fill_random_uniform(weight_base);
+		//		printf("fill_random_uniform finished.\n");
 			}
 			else if ((strcmp(l_bottom->p_act->name, "lrelu") == 0) || (strcmp(l_bottom->p_act->name, "relu") == 0)
 				|| (strcmp(l_bottom->p_act->name, "vlrelu") == 0) || (strcmp(l_bottom->p_act->name, "elu") == 0))
 			{
 				// he : for relu
-				printf("fill_random_uniform begin: relu.\n");
+		//		printf("fill_random_uniform begin: relu.\n");
 				float weight_base = (float)(std::sqrt(2. / (double)fan_in));
-				w->fill_random_normal(weight_base);
-				printf("fill_random_uniform finished.\n");
+				((matrix *)w->pmatrix)->fill_random_normal(weight_base);
+		//		printf("fill_random_uniform finished.\n");
 			}
 			else
 			{
 				// lecun : orig
-				printf("fill_random_uniform begin: lecun : orig.\n");
+		//		printf("fill_random_uniform begin: lecun : orig.\n");
 				float weight_base = (float)(std::sqrt(1. / (double)fan_in));
-				w->fill_random_uniform(weight_base);
+				((matrix *)w->pmatrix)->fill_random_uniform(weight_base);
 				
-				printf("fill_random_uniform finished.\n");
+		//		printf("fill_random_uniform finished.\n");
 			}
 		}
-		else if (w) w->fill(0);
-		printf("finished initialize weights\n");
+		else if (((matrix *)w->pmatrix)) ((matrix *)w->pmatrix)->fill(0);
+	//	printf("finished initialize weights\n");
 	}
 
 	// automatically connect all layers in the order they were provided 
@@ -544,6 +545,7 @@ public:
 	// if calling over multiple threads, provide the thread index since the interal data is not otherwise thread safe
 	int predict_class(const float *in, int _thread_number = -1)
 	{
+//	    printf("Input: %f %f\n", in[0], in[1]);
 		const float* out = forward(in, _thread_number);
 //		for(int i = 0; i < out_size(); i++)
 //		    printf("%d: %f\n", i, out[i]);
@@ -558,8 +560,9 @@ public:
 	// train parameter is used to designate the forward pass is used in training (it turns on dropout layers, etc..)
 	float* forward(const float *in, int _thread_number=-1, int _train=0)
 	{
-//        for(int i = W[0]->size()-10; i < W[0]->size(); i++)
-//            printf("W[i]->x[%d] = %f\n", i, W[0]->x[i]);
+//	    printf("forward: %f %f\n", in[0], in[1]);
+     //   for(int i = 0; i < 5; i++)
+     //       printf("W[i]->x[%d] = %f\n", i, W[0]->x[i]);
 		if(_thread_number<0) _thread_number=get_thread_num();
 		if (_thread_number > _thread_count && _thread_count>0) bail("need to enable threading\n");
 		if (_thread_number >= (int)layer_sets.size()) bail("need to enable threading\n");
@@ -584,16 +587,18 @@ public:
 			memcpy(layer->node.x, in_ptr, sizeof(float)*layer->node.size());
 			in_ptr += layer->node.size();
 		}
-		//for (int i = 0; i < layer->node.size(); i++)
+		//for (int i = 0; i <  layer_sets[_thread_number][0]->node.size(); i++)
+		//    printf("%f, ", layer_sets[_thread_number][0]->node.x[i]);
+		//printf("\n");
 		//	layer_sets[_thread_number][0]->node.x[i] = in[i];
 		// for all layers
 		__for__(auto layer __in__ layer_sets[_thread_number])
 		{
 			// add bias and activate these outputs (they should all be summed up from other branches at this point)
-			//for(int j=0; j<layer->node.chans; j+=10) for (int i=0; i<layer->node.cols*layer->node.rows; i+=10)	std::cout<< layer->node.x[i+j*layer->node.chan_stride] <<"|";
+		//	for(int j=0; j<layer->node.chans; j+=10) for (int i=0; i<layer->node.cols*layer->node.rows; i+=10)	printf("%f|", layer->node.x[i+j*layer->node.chan_stride]);
 			layer->activate_nodes(); 
 			
-			//for(int j=0; j<layer->node.chans; j++) for (int i=0; i<layer->node.cols*layer->node.rows; i+=10)	std::cout<< layer->node.x[i+j*layer->node.chan_stride] <<"|";
+		//	for(int j=0; j<layer->node.chans; j++) for (int i=0; i<layer->node.cols*layer->node.rows; i+=10)	printf("%f|", layer->node.x[i+j*layer->node.chan_stride]);
 			// send output signal downstream (note in this code 'top' is input layer, 'bottom' is output - bucking tradition
 			__for__ (auto &link __in__ layer->forward_linked_layers)
 			{
@@ -625,116 +630,6 @@ public:
 	    va_end(ap);
 	    ocall_fprint_networkfile(buf);
     }
-
-	//----------------------------------------------------------------------------------------------------------
-	// W R I T E
-	//
-	// write parameters to stream/file
-	// note that this does not persist intermediate training information that could be needed to 'pickup where you left off'
-	bool write(char *filename, bool binary = false, bool final = false) 
-	{
-	    int retocall;
-	    open_outputnetworkfile(&retocall, filename);
-	    
-	    
-	    // save layers
-		int layer_cnt = (int)layer_sets[MAIN_LAYER_SET].size();
-//		int ignore_cnt = 0;
-//		for (int j = 0; j<(int)layer_sets[0].size(); j++)
-//			if (dynamic_cast<dropout_layer*> (layer_sets[0][j]) != NULL)  ignore_cnt++;
-        
-        
-        fprint_networkfile("mojo01\n");
-        fprint_networkfile("%d\n", (int)(layer_cnt));        
-//		ofs<<"mojo01" << std::endl;
-//		ofs<<(int)(layer_cnt)<<std::endl;
-		
-		for(int j=0; j<(int)layer_sets[0].size(); j++)
-		    fprint_networkfile("%s\n%s", layer_sets[MAIN_LAYER_SET][j]->name, layer_sets[MAIN_LAYER_SET][j]->get_config_string().c_str());
-		//	ofs << layer_sets[MAIN_LAYER_SET][j]->name << std::endl << layer_sets[MAIN_LAYER_SET][j]->get_config_string();	
-			
-//			if (dynamic_cast<dropout_layer*> (layer_sets[0][j]) != NULL)
-
-		// save graph
-		fprint_networkfile("%d\n", (int)layer_graph.size());     
-		//ofs<<(int)layer_graph.size()<<std::endl;
-		for(int j=0; j<(int)layer_graph.size(); j++)
-		    fprint_networkfile("%s\n%s\n", layer_graph[j].first.c_str(), layer_graph[j].second.c_str());
-		//	ofs<<layer_graph[j].first << std::endl << layer_graph[j].second << std::endl;
-
-		if(binary)
-		{
-			//ofs<<(int)1<<std::endl; // flags that this is binary data
-			fprint_networkfile("1\n");
-			// binary version to save space if needed
-			// save bias info
-			
-			for(int j=0; j<(int)layer_sets[MAIN_LAYER_SET].size(); j++)
-				if(layer_sets[MAIN_LAYER_SET][j]->use_bias())
-        {
-            int breakdown = 0; // 
-            while(breakdown + blocksize < layer_sets[MAIN_LAYER_SET][j]->bias.size())
-            {
-				      ocall_write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x + breakdown*sizeof(float), blocksize*sizeof(float));
-              breakdown += blocksize;
-            }
-            ocall_write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x + breakdown*sizeof(float), (layer_sets[MAIN_LAYER_SET][j]->bias.size()-breakdown)*sizeof(float));
-				//    ocall_write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
-        }
-				//    for(int k = 0; k < layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float); k++)
-				//	    fprint_networkfile("%c", (char*)layer_sets[MAIN_LAYER_SET][j]->bias.x+k);
-					//ofs.write((char*)layer_sets[MAIN_LAYER_SET][j]->bias.x, layer_sets[MAIN_LAYER_SET][j]->bias.size()*sizeof(float));
-			// save weights
-			for (int j = 0; j < (int)W.size(); j++)
-			{
-				if (W[j])
-        {
-            int breakdown = 0; // 
-            while(breakdown + blocksize < W[j]->size())
-            {
-				      ocall_write((char*)W[j]->x + breakdown*sizeof(float), blocksize*sizeof(float));
-              breakdown += blocksize;
-            }
-            ocall_write((char*)W[j]->x + breakdown*sizeof(float), (W[j]->size()-breakdown)*sizeof(float));
-        }
-				//    for(int k = 0; k < W[j]->size()*sizeof(float); k++)
-				//        fprint_networkfile("%c", (char*)W[j]->x+k);
-				//	ofs.write((char*)W[j]->x, W[j]->size()*sizeof(float));
-			}
-		}
-		else
-		{
-			//ofs<<(int)0<<std::endl;
-			fprint_networkfile("0\n");
-			// save bias info
-			for(int j=0; j<(int)layer_sets[MAIN_LAYER_SET].size(); j++)
-			{
-				if (layer_sets[MAIN_LAYER_SET][j]->use_bias())
-				{
-					for (int k = 0; k < layer_sets[MAIN_LAYER_SET][j]->bias.size(); k++)  
-					    fprint_networkfile("%f ", layer_sets[MAIN_LAYER_SET][j]->bias.x[k]);
-					    //ofs << layer_sets[MAIN_LAYER_SET][j]->bias.x[k] << " ";
-					fprint_networkfile("\n");
-					//ofs << std::endl;
-				}
-			}
-			// save weights
-			for(int j=0; j<(int)W.size(); j++)
-			{
-				if (W[j])
-				{
-					for (int i = 0; i < W[j]->size(); i++) 
-					    fprint_networkfile("%f ", W[j]->x[i]);
-					    //ofs << W[j]->x[i] << " ";
-					fprint_networkfile("\n");
-					//ofs << std::endl;
-				}
-			}
-		}
-		//ofs.flush();
-		close_outputnetworkfile();
-		return true;
-	}
 	
 	// read network from a file/stream
 	
@@ -899,11 +794,11 @@ public:
 				}
 			for (int j = 0; j < (int)W.size(); j++)
 			{
-                printf("loading weight for %d-th layer\n", j);
-				if (W[j])
+         //       printf("loading weight for %d-th layer: %d\n", j, W[j]->size);
+				if (((matrix *)W[j]->x))
 				{
 				    //   ocall_read_outenclave((uint64_t)(W[j]->x), W[j]->size()*sizeof(float));
-                    ocall_read_outenclave((uint64_t)(W[j]), W[j]->size()*sizeof(float));
+                    ocall_read_outenclave((uint64_t)(W[j]->x), (W[j]->size)*sizeof(float));
                 /*    int breakdown = 0; // 
                     while(breakdown + blocksize < W[j]->size())
                     {
@@ -942,10 +837,10 @@ public:
 			// read weights
 			for (auto j=0; j<(int)W.size(); j++)
 			{
-				if (W[j])
+				if (((matrix *)W[j]->pmatrix))
 				{
-					for (int i = 0; i < W[j]->size(); i++) 
-					    ocall_getfloat(&W[j]->x[i]);
+					for (int i = 0; i < ((matrix *)W[j]->pmatrix)->size(); i++) 
+					    ocall_getfloat(&((matrix *)W[j]->pmatrix)->x[i]);
 					    //ifs >> W[j]->x[i];
 					//ifs.ignore(); //getline(ifs, s); // get endline
 					end_this_line();

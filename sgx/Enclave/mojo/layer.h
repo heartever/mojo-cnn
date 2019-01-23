@@ -953,7 +953,10 @@ public:
 		kernels_per_map += top.node.chans;
 		resize((top.node.cols-kernel_cols)/_stride+1, (top.node.rows-kernel_rows)/_stride+1, maps);
 
-		return new matrix(kernel_cols,kernel_rows, maps*kernels_per_map);
+        matrix *ret = new matrix(kernel_cols, kernel_rows, maps*kernels_per_map);
+        
+        printf("%d  %d   %d, size: %d\n", kernel_cols, kernel_rows, maps*kernels_per_map, ret->size());
+		return ret;
 	}
 
 	// activate_nodes
@@ -1132,12 +1135,15 @@ public:
 						MOJO_THREAD_THIS_LOOP_DYNAMIC(_thread_count)
 						for(int j=0; j<node_size; j+= stride) // input h 
  							for(int i=0; i<node_size; i+= stride) // intput w
+ 							{
+ 						//	    printf("%d: %f\n", (map+k*maps)*kernel_size, w.x[(map+k*maps)*kernel_size]);
 								node.x[i+(j)*node.cols +map_stride*map]+= 
 									unwrap_2d_dot(
 										&top.node.x[(i)+(j)*jstep + k*kstep],
 										&w.x[(map+k*maps)*kernel_size],
 										kernel_cols,
 										jstep,kernel_cols);
+							}
 					
 					} // k
 				} // all maps=chans

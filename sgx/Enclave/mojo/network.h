@@ -895,20 +895,21 @@ public:
 				}
 			for (int j = 0; j < (int)W.size(); j++)
 			{
-
+                
 				if (W[j])
 				{
-				   
+				   printf("loading weight for %d-th layer: %d\n", j, W[j]->size());
 				   // ocall_read((char*)W[j]->x, W[j]->size()*sizeof(float));
-             int breakdown = 0; // 
-              while(breakdown + blocksize < W[j]->size())
-              {
-    			      ocall_read((char*)W[j]->x + breakdown*sizeof(float), blocksize*sizeof(float));
-                breakdown += blocksize;
-              }
-            ocall_read((char*)W[j]->x + breakdown*sizeof(float), (W[j]->size()-breakdown)*sizeof(float));
+                     int breakdown = 0; // 
+                      while(breakdown + blocksize < W[j]->size())
+                      {
+            			    ocall_read((char*)W[j]->x + breakdown*sizeof(float), blocksize*sizeof(float));
+                            breakdown += blocksize;
+                      }
+                    ocall_read((char*)W[j]->x + breakdown*sizeof(float), (W[j]->size()-breakdown)*sizeof(float));
 				//	ifs.read((char*)W[j]->x, W[j]->size()*sizeof(float));
-				}
+				}else
+				    printf("loading weight for %d-th layer: 0\n", j);
 			}
 		}
 		else if(binary==0)// text version

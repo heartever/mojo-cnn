@@ -12,8 +12,6 @@ enclave {
 
         public float get_estimated_accuracy();
 
-        public void write_model_file([in, string] char *model_file);
-
     };
 
     untrusted {
@@ -43,7 +41,7 @@ enclave {
         void close_networkfile();
         void close_outputnetworkfile();
         
-        uint64_t ocall_newmatrix(int cols, int rows, int chans);
+        uint64_t ocall_newmatrix([out, count = 1] uint64_t * px, [out, count = 1] int *size, int cols, int rows, int chans);
         void ocall_fill_uniform(uint64_t pmatrix, float range);
         void ocall_fill_normal(uint64_t pmatrix, float std);
     };

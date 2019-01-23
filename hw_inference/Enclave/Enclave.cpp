@@ -74,8 +74,3 @@ float get_estimated_accuracy()
 {
     return cnn.estimated_accuracy;
 }
-
-void write_model_file(char *model_file)
-{
-    cnn.write(model_file, true);
-}
